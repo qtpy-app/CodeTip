@@ -243,7 +243,7 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.langView.selectRow(self.row)
         tablename=self.sort_Model.data(self.sort_Model.index(self.row,0))
         self.initializeModel(self.codeModel, tablename)#!!!!!!!!!!!!!!!!
-
+    def test
 
 if __name__ == "__main__":
     import sys
