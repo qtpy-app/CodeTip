@@ -75,12 +75,10 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.verticalLayout_4.addWidget(self.langView)
         #================================= code =====================================#
         self.codeModel=QSqlTableModel()
-        self.codeModel.setEditStrategy(QSqlTableModel.OnManualSubmit)
-        print(self.codeModel.EditStrategy())
+        self.codeModel.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.codeModel.setHeaderData(0, Qt.Horizontal, "操作")
         self.codeModel.setHeaderData(1, Qt.Horizontal, "代码")
         self.codeModel.setObjectName('codeModel')
-        
         
         self.codeView = self.createView("Code_View", self.codeModel)
         self.codeView.clicked.connect(self.findrow)
@@ -105,7 +103,6 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.row=0
         self.oldTableName='' 
         self.newTableName=''     
-
         #================================ setting ==================================#
 #        self.setTabOrder(self.langView, self.codeView);
         self.model=self.sort_Model
@@ -113,7 +110,6 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.writeSetting()
         
         self.se()
-        
         
     def eventFilter(self, obj, event):  
         if event.type()==QEvent.KeyPress:    
@@ -126,6 +122,7 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
                 if obj == self.codeView:
                     if self.model.tableName()=='languages':
                         self.timer.singleShot(200, self.reselect)
+                        self.timer.singleShot(400, self.addTable)
         return False                
 
     def initTbleName(self): #初始化 langModel 的表
@@ -153,7 +150,7 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.model=self.sender().model()
         
         self.getOldTableName()
-        #改变表格
+        
         if self.model==self.sort_Model:
             row=self.row
             tablename=self.sort_Model.data(self.sort_Model.index(row,0))
@@ -180,9 +177,12 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
             defaultValue=self.model.data(self.model.index(self.sort_Model.rowCount()-1, 1))+10
             self.model.setData(index, defaultValue)#设置排序序号
     def addTable(self):
-        tablename=self.model.data(self.sort_Model.index(self.sort_Model.rowCount()-1, 0))
-        self.query.exec("create table %s(operation char not null, code char)"%(tablename))
-
+        if self.model==self.sort_Model:
+            tablename=self.model.data(self.model.index(self.model.rowCount()-1, 0))
+        elif self.model==self.codeModel:
+            tablename=self.model.data(self.model.index(self.row,  0))
+        self.query.exec("create table %s(operation char not null, code char)"%(str(tablename)))
+        print('222', tablename)
     def deleteData(self):
         if self.model == self.codeModel :
             if self.codeModel.tableName()=='languages' :
@@ -192,11 +192,13 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
                     self.query.exec('DROP TABLE %s'%(deleteTableName ))
             else:
                 self.model.removeRows(self.row, 1)#删除数据 
+        
         elif self.model == self.sort_Model:
            if self.oldTableName != 'languages':
                self.model.setData(self.sort_Model.index(self.row, 2), 0)
-        self.reselect()
+        self.codeModel.submitAll()
         
+        self.reselect()
         
     def getOldTableName(self):
         self.oldTableName = self.sort_Model.data(self.sort_Model.index(self.row,0))#!
