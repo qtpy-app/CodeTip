@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
 from PyQt5 import  QtWidgets
 
 from PyQt5.QtCore import *
@@ -34,16 +33,16 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.delaction.setShortcut( "Ctrl+D")
         self.freshaction.setShortcut( "F5")
         
-        self.pushBu=QPushButton()
-        self.toolBar.addWidget(self.pushBu)
-        self.pushBu.clicked.connect(self.se)
+#        self.pushBu=QPushButton()
+#        self.toolBar.addWidget(self.pushBu)
+#        self.pushBu.clicked.connect(self.queryRecord)
         #=============================== action & Singnal ================================#
         self.addaction.triggered.connect(self.addData)
         self.delaction.triggered.connect(self.deleteData)
         self.freshaction.triggered.connect(self.fresh)
         self.search.returnPressed.connect(self.queryRecord)
         
-        self.pushBu.clicked.connect(self.se)
+#        self.pushBu.clicked.connect(self.se)
         #===============================   db   ======================================#
         
         self.db = QSqlDatabase.addDatabase('QSQLITE')
@@ -82,25 +81,29 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         
         self.codeView = self.createView("Code_View", self.codeModel)
         self.codeView.clicked.connect(self.findrow)
+        self.codeView.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.codeView.customContextMenuRequested.connect(self.myListWidgetContext)#右键请求         
         self.verticalLayout.addWidget(self.codeView)       
 #        #================================= Timer=====================================#
         self.timer=QTimer()
         #================================= search ===================================#
-        self.seachModel=QSqlQueryModel()
-#        self.initializeModel(self.seachModel, 'langue')
-        self.seachModel.setHeaderData(0, Qt.Horizontal, "操作")
-        self.seachModel.setHeaderData(1, Qt.Horizontal, "代码")        
-        self.seachModel.setObjectName('seachModel')
+        self.searchModel=QSqlQueryModel()
+#        self.initializeModel(self.searchModel, 'langue')
+        self.searchModel.setHeaderData(0, Qt.Horizontal, "操作")
+        self.searchModel.setHeaderData(1, Qt.Horizontal, "代码")        
+        self.searchModel.setObjectName('searchModel')
 
-        self.searchView=self.createView("Search_View", self.seachModel)
+        self.searchView=self.createView("Search_View", self.searchModel)
         self.verticalLayout_2.addWidget(self.searchView)
         #================================  query  ===================================#
         self.query = QSqlQuery()
+
         #================================  installEventFilter  ===================================#
         self.langView.installEventFilter(self) 
         self.codeView.installEventFilter(self) 
         #================================ initData ==================================#
         self.row=0
+        self.frame=1
         self.oldTableName='' 
         self.newTableName=''     
         #================================ setting ==================================#
@@ -109,11 +112,17 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.setting=QSettings('./db/setting.ini', QSettings.IniFormat)
         self.writeSetting()
         
-        self.se()
+        self.rememberRow()
         
     def eventFilter(self, obj, event):  
         if event.type()==QEvent.KeyPress:    
-            if event.key()==Qt.Key_Return or event.key()==Qt.Key_Tab:
+            if event.key()== Qt.Key_Return and event.modifiers() == Qt.AltModifier :
+                if obj == self.codeView:
+                    print('123')
+                    self.edit=QTextEdit()
+                    self.edit.show()
+                    
+            elif event.key()==Qt.Key_Return or event.key()==Qt.Key_Tab:
                 if obj == self.langView:
                     self.timer.singleShot(200, self.addTable)
                     tablename=self.sort_Model.data(self.sort_Model.index(self.row,0))
@@ -123,16 +132,38 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
                     if self.model.tableName()=='languages':
                         self.timer.singleShot(200, self.reselect)
                         self.timer.singleShot(400, self.addTable)
-        return False                
 
-    def initTbleName(self): #初始化 langModel 的表
-        [self.query.exec("insert into languages(lang) values('%s')"%(i_tablename)) for i_tablename in self.db.tables()]
-            
-        self.langModel.select() 
+        return False    
         
+    def enterEvent(self, event):
+        #self.activateWindow()
+        #print('x:',self.x(),'；y:',self.y(),'；frame:',self.frame)
+        if(self.x() == self.frame-self.width()):
+            self.move(-self.frame,self.y())
+            #左边
+        elif(self.y() == self.frame-self.height()+self.y()-self.geometry().y()):
+            self.move(self.x(),-self.frame)
+            #上边
+    def leaveEvent(self,event):    
+        cx,cy=QCursor.pos().x(),QCursor.pos().y()
+        
+        if(cx >= self.x() and cx <= self.x()+self.width()
+            and cy >= self.y() and cy <= self.geometry().y()):
+            return#title bar
+
+        elif(self.x() < 0 and QCursor.pos().x()>0):
+            self.move(self.frame-self.width(),self.y())
+            #左边
+            
+        elif(self.y() < 0 and QCursor.pos().y()>0):
+            self.move(self.x(), self.frame-self.height()+self.y()-self.geometry().y())
+    #def mouseReleaseEvent(self, event):
+        #peint('x:',self.x(),';y:',self.y())        
+        
+    def moveEvent(self, event):
+        print(self.geometry(), self.width(), self.height())
     def initializeModel(self, model, tablename):
         model.setTable(tablename)
-        
         model.select()
 
     def createView(self, title, model):
@@ -140,11 +171,23 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         view.setModel(model)
         view.setWindowTitle(title)
         view.horizontalHeader().setSectionResizeMode(3)#列宽设置
+        view.verticalHeader().setSectionResizeMode(3)#行高设置
         view.horizontalHeader().setStretchLastSection(True); #充满列宽
         view.verticalHeader().setVisible(False)#隐藏行标题
         view.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)#标题左对齐
-        return view        
-    
+       
+        return view  
+        
+    def myListWidgetContext(self):
+        popMenu =QMenu()
+        popMenu.addAction(u'删除行',self.del_Item)
+        popMenu.exec_(QCursor.pos())#鼠标位置
+
+        #currentColumn 当前列；columnCount()总列数；currentIndex().row()在父节点下的行号
+ 
+    def del_Item(self):    
+        pass
+            
     def findrow(self, i):
         self.row= i.row()
         self.model=self.sender().model()
@@ -152,12 +195,16 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.getOldTableName()
         
         if self.model==self.sort_Model:
-            row=self.row
-            tablename=self.sort_Model.data(self.sort_Model.index(row,0))
+           
+            tablename=self.sort_Model.data(self.sort_Model.index(self.row,0))
             self.initializeModel(self.codeModel, tablename)#!!!!!!!!!!!!!!!!
             
-            if self.codeModel.rowCount()==0:
-                self.query.exec("insert into %s values('inputI', 'inputII')"%(tablename))
+            if self.stackedWidget.currentIndex()==0:
+                if self.codeModel.rowCount()==0:
+                    self.query.exec("INSERT INTO %s values('inputI', 'inputII')"%(tablename))
+            
+            else:
+                self.queryRecord()
             
     def addData(self, ):
         try:
@@ -176,13 +223,14 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
             
             defaultValue=self.model.data(self.model.index(self.sort_Model.rowCount()-1, 1))+10
             self.model.setData(index, defaultValue)#设置排序序号
+
     def addTable(self):
         if self.model==self.sort_Model:
             tablename=self.model.data(self.model.index(self.model.rowCount()-1, 0))
         elif self.model==self.codeModel:
             tablename=self.model.data(self.model.index(self.row,  0))
-        self.query.exec("create table %s(operation char not null, code char)"%(str(tablename)))
-        print('222', tablename)
+        self.query.exec("CREATE VIRTUAL TABLE %s USING fts5(Operation , Code )"%(tablename))
+        self.reselect()
     def deleteData(self):
         if self.model == self.codeModel :
             if self.codeModel.tableName()=='languages' :
@@ -213,10 +261,12 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.query.exec('ALTER TABLE %s RENAME TO %s'%(self.oldTableName, self.newTableName))        
   
     def queryRecord(self):
-#        self.stackedWidget.setCurrentIndex(1)
-#        condition=self.search.text()
-        self.langModel.setFilter(None)   
-        self.langModel.select()  
+        self.stackedWidget.setCurrentIndex(1)  
+        
+        queryText="SELECT * FROM %s WHERE %s MATCH '%s';"%(self.oldTableName, self.oldTableName, self.search.text())
+
+        self.searchModel.setQuery(queryText)
+        print(self.searchModel.query())
 
     def fresh(self):
         self.stackedWidget.setCurrentIndex(0)  
@@ -241,7 +291,7 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.setting.setValue("SelectTable/selectRow",str(self.row));#设置key和value，也就是参数和值  
         self.codeModel.submitAll()
         
-    def se(self):
+    def rememberRow(self):
         self.langView.selectRow(self.row)
         tablename=self.sort_Model.data(self.sort_Model.index(self.row,0))
         self.initializeModel(self.codeModel, tablename)#!!!!!!!!!!!!!!!!
