@@ -153,7 +153,6 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
                 if obj == self.codeView:
                     
                     text=self.codeModel.data(self.codeModel.index(self.row, self.column))
-                    print(text)
                     self.edit.textEdit.setPlainText(text)
                     self.edit.show()   
                     
@@ -232,16 +231,16 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
     def helpMenu(self):       
         popMenu =QMenu()
         popMenu.addAction(u'查询帮助文档',self.deleteData)
-        popMenu.addAction(u'关于',self.addField)
+        popMenu.addAction(u'关于',self.showAboutMe)
         popMenu.exec_(QCursor.pos())#鼠标位置
         
         #currentColumn 当前列；columnCount()总列数；currentIndex().row()在父节点下的行号
  
     def addField(self):  
         fieldName=self.fieldEdit=QInputDialog.getText(self, '列名','请输入', QLineEdit.Normal, '在此输入')
-        print(fieldName)
-        self.query.exec("ALTER TABLE %s ADD COLUMN %s int;"%(self.oldTableName, fieldName[0]))   
-        
+        if fieldName[-1]==True:
+            self.query.exec("ALTER TABLE %s ADD COLUMN %s TEXT;"%(self.oldTableName, fieldName[0]))   
+        self.initializeModel(self.codeModel, self.oldTableName)#!!!!!!!!!!!!!!!!
     def deleteField(self):
         self.query.append()
             
@@ -249,18 +248,10 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.row= i.row()
         self.column=i.column()
         self.model=self.sender().model()
-        
-        self.getOldTableName()
-        
 #        codeView_index=self.codeView.indexAt(i)
-        
-        a, b=i.row(), i.column()
-        
-        text=self.codeModel.data(self.codeModel.index(a, b))
-        print(a, b, text)
-        
         if self.model==self.sort_Model:
-           
+            self.getOldTableName()
+            print(self.oldTableName)
             tablename=self.sort_Model.data(self.sort_Model.index(self.row,0))
             self.initializeModel(self.codeModel, tablename)#!!!!!!!!!!!!!!!!
             
@@ -300,7 +291,7 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         
 #        self.query.exec("CREATE VIRTUAL TABLE %s USING fts5(Operation , Code )"%(tablename))
 
-        self.query.exec("CREATE TABLE %s (Operation char, Code char)"%(tablename))
+        self.query.exec("CREATE TABLE %s (Operation TEXT, Code TEXT)"%(tablename))
         
         self.query.exec("INSERT INTO %s values('inputI', 'inputII')"%(tablename))        
         
@@ -309,10 +300,10 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
             c = conn.cursor()
             try:
                 text="CREATE TABLE %s\
-                   (ID INT PRIMARY KEY     NOT NULL,\
-                   NAME           TEXT    NOT NULL,\
-                   AGE            INT     NOT NULL,\
-                   ADDRESS        CHAR(50));"%(str(tablename))
+                   (\
+                   Operation      TEXT    NOT NULL,\
+                   Code           TEXT     NOT NULL,\
+                   );"%(str(tablename))
                 c.execute(text)
                 conn.commit()
             except:
@@ -378,8 +369,10 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
             self.model.select() 
             self.langModel.select()
             self.sort_Model.select()
+            self.codeModel.select()
         except:
             self.langModel.select()
+             
             
     def getSetting(self):            
         if(self.setting.contains("SelectTable/selectRow")):   #此节点是否存在该数据
