@@ -122,7 +122,11 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.codeView.customContextMenuRequested.connect(self.codeMenu)#右键请求     
         self.delegate=SpinBoxDelegate()
         self.codeView.setItemDelegate(self.delegate)      
-        self.verticalLayout.addWidget(self.codeView)       
+        self.verticalLayout.addWidget(self.codeView)  
+        self.scroll_bar = self.codeView.verticalScrollBar()
+        self.scroll_bar.setMaximum(100)
+        self.scroll_bar.setMinimum (0)
+ 
         #================================ Timer ===================================#
         self.timer=QTimer()
         #================================= search ===================================#
@@ -145,7 +149,8 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.column=0
         self.frame=1
         self.oldTableName='' 
-        self.newTableName=''     
+        self.newTableName=''
+        self.last_time_move = 0     
         #================================ setting ==================================#
         self.model=self.sort_Model
         self.setting=QSettings('./db/setting.ini', QSettings.IniFormat)
@@ -194,6 +199,19 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
             if mouseEvent.buttons() == Qt.RightButton:
                 print('click')            
         '''
+        if event.type() == QEvent.MouseMove:
+            print(event.pos().y())
+
+            if self.last_time_move == 0:
+                self.last_time_move = event.pos().y()
+
+            distance = self.last_time_move - event.pos().y()
+            self.scroll_bar.setValue(self.scroll_bar.value() + distance)
+            self.last_time_move = event.pos().y()
+
+        elif event.type() == QEvent.MouseButtonRelease:
+            self.last_time_move = 0
+        
         return QMainWindow.eventFilter(self, obj, event)
      
     def enterEvent(self, event):
@@ -500,9 +518,12 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
 #        self.pixmap.load("pi.jpg")
 #        print(self.pixmap)
 #        self.stackLabel.setPixmap(self.pixmap)
-        self.test_record=QSqlRecord()
+#        self.test_record=QSqlRecord()
 #        print(self.test_record.field(self.codeModel.index(self.row, self.column)))
         
+        print(self.scroll_bar.value())
+
+        self.scroll_bar.setValue(self.scroll_bar.value()+2)
         self.codeModel.setData(self.codeModel.index(self.row, self.column), '1' , Qt.DecorationRole)
         self.codeModel.submitAll()
 
