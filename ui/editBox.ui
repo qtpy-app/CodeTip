@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>339</width>
-    <height>222</height>
+    <width>192</width>
+    <height>128</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,11 +16,56 @@
   <property name="sizeGripEnabled">
    <bool>true</bool>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
-   <item row="1" column="0">
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="sizeConstraint">
+    <enum>QLayout::SetMinAndMaxSize</enum>
+   </property>
+   <item>
+    <widget class="QLineEdit" name="lineEdit">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer_2">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <widget class="QLineEdit" name="lineEdit_2"/>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
     <layout class="QHBoxLayout">
      <property name="spacing">
       <number>6</number>
+     </property>
+     <property name="sizeConstraint">
+      <enum>QLayout::SetDefaultConstraint</enum>
      </property>
      <property name="leftMargin">
       <number>0</number>
@@ -50,25 +95,18 @@
      <item>
       <widget class="QPushButton" name="okButton">
        <property name="text">
-        <string>&amp;OK</string>
+        <string>&amp;OK (Alt+Ent)</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="cancelButton">
        <property name="text">
-        <string>&amp;Cancel</string>
+        <string>&amp;Cancel (Esc)</string>
        </property>
       </widget>
      </item>
     </layout>
-   </item>
-   <item row="0" column="0">
-    <widget class="QPlainTextEdit" name="textEdit">
-     <property name="plainText">
-      <string/>
-     </property>
-    </widget>
    </item>
   </layout>
  </widget>

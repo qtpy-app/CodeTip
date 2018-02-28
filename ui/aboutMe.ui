@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>435</width>
-    <height>267</height>
+    <width>434</width>
+    <height>271</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -38,7 +38,7 @@
       <widget class="QWidget" name="page">
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <property name="spacing">
-         <number>2</number>
+         <number>0</number>
         </property>
         <property name="leftMargin">
          <number>0</number>
@@ -87,7 +87,7 @@ p, li { white-space: pre-wrap; }
   </widget>
  </widget>
  <resources>
-  <include location="codetip_qrc.qrc"/>
+  <include location="../codetip_qrc.qrc"/>
  </resources>
  <connections/>
 </ui>
