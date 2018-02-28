@@ -9,13 +9,16 @@ from PyQt5.uic import loadUi
 
 import webbrowser
 
-class Edit_Dialog(QDialog, ):
+class Edit_Dialog(QDialog):
 
     def __init__(self, parent=None):
 
         super(Edit_Dialog, self).__init__(parent)
         loadUi("ui/editBox.ui", self)
         self.okButton.setShortcut( "Alt+Return")
+        self.lineEdit.setPlaceholderText('字段名称')
+        self.lineEdit_2.setPlaceholderText('默认值(选填)')
+#        print(self.comboBox.currentText())
     
 if __name__ == "__main__":
     import sys
