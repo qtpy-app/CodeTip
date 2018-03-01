@@ -5,7 +5,6 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtSql import *
-from PyQt5.QtCore import Qt 
 
 import sqlite3
 import sip
@@ -13,8 +12,7 @@ import sip
 from Ui_MainWindow import Ui_MainWindow
 from aboutMeWidget import AboutMe_Dialog
 from editWidget import Edit_Dialog
-#from MyTableModel import MyTableModel
-from spinboxdelegate import SpinBoxDelegate
+from delegate import SpinBoxDelegate
 
 class MainWindow(QMainWindow, Ui_MainWindow,):
     updateView=pyqtSignal()
@@ -106,11 +104,7 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
 
         self.verticalLayout_4.addWidget(self.langView)
         #================================= code =====================================#
-        
-#        self.codeModel = MyTableModel()##=======================================================!!
-
         self.codeModel = QSqlTableModel()##=======================================================!!
-        
         self.codeModel.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.codeModel.setHeaderData(0, Qt.Horizontal, "操作")
         self.codeModel.setHeaderData(1, Qt.Horizontal, "代码")
@@ -120,13 +114,13 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.codeView.clicked.connect(self.findrow)
         self.codeView.setContextMenuPolicy(Qt.CustomContextMenu)
         self.codeView.customContextMenuRequested.connect(self.codeMenu)#右键请求     
-        self.delegate=SpinBoxDelegate()
-        self.codeView.setItemDelegate(self.delegate)      
+        delegate=SpinBoxDelegate(self.codeModel)
+        self.codeView.setItemDelegate(delegate)      
         self.verticalLayout.addWidget(self.codeView)  
-        self.scroll_bar = self.codeView.verticalScrollBar()
-        self.scroll_bar.setMaximum(100)
-        self.scroll_bar.setMinimum (0)
- 
+        self.codeView.setMouseTracking(True);
+
+        self.codeView.entered['QModelIndex'].connect(self.showToolTip)
+
         #================================ Timer ===================================#
         self.timer=QTimer()
         #================================= search ===================================#
@@ -150,7 +144,7 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.frame=1
         self.oldTableName='' 
         self.newTableName=''
-        self.last_time_move = 0     
+  
         #================================ setting ==================================#
         self.model=self.sort_Model
         self.setting=QSettings('./db/setting.ini', QSettings.IniFormat)
@@ -174,7 +168,7 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
                     if fieldName[-1]==True:
                         self.codeModel.setData(self.codeModel.index(self.row, self.column), fieldName[0])
                     
-            if event.key()==Qt.Key_Return or event.key()==Qt.Key_Tab:
+            elif event.key()==Qt.Key_Return or event.key()==Qt.Key_Tab:
                 
                 if obj == self.langView:
                     self.timer.singleShot(200, self.addTable)
@@ -182,16 +176,13 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
                     self.initializeModel(self.codeModel, tablename)#!!!!!!!!!!!!!!!!      
                 
                 if obj == self.codeView:
-                    print(self.model.tableName())
+#                    print(self.model.tableName())
                     if self.model.tableName()=='languages':
                         self.timer.singleShot(200, self.reselect)
                         self.timer.singleShot(400, self.addTable)
                     else:
-                        self.addData()
-                        print('保存')
-                        
-                        
-                    self.initializeModel(self.codeModel, self.oldTableName)
+                        if self.column == self.codeModel.columnCount():
+                            self.addData()
 
         ''' 额外知识点
         if event.type() == QEvent.MouseButtonPress:
@@ -199,18 +190,6 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
             if mouseEvent.buttons() == Qt.RightButton:
                 print('click')            
         '''
-        if event.type() == QEvent.MouseMove:
-            print(event.pos().y())
-
-            if self.last_time_move == 0:
-                self.last_time_move = event.pos().y()
-
-            distance = self.last_time_move - event.pos().y()
-            self.scroll_bar.setValue(self.scroll_bar.value() + distance)
-            self.last_time_move = event.pos().y()
-
-        elif event.type() == QEvent.MouseButtonRelease:
-            self.last_time_move = 0
         
         return QMainWindow.eventFilter(self, obj, event)
      
@@ -333,7 +312,6 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.row= i.row()
         self.column=i.column()
         self.model=self.sender().model()
-        print(self.model , self.row)
         if self.model==self.sort_Model:
             self.getOldTableName()
             
@@ -494,7 +472,6 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.setting.setValue("Position/h",str(self.height()));#设置高度
         sip.delete(self.tray)
     
-    
     def setTop(self):
         if self.checkbox.isChecked():
             self.setWindowFlags(Qt.WindowStaysOnTopHint)
@@ -514,20 +491,22 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         list=[record.fieldName(i) for i in range(record.count())]#获取字段名
         return list
     def pr(self):
-#        self.pixmap=QPixmap()
-#        self.pixmap.load("pi.jpg")
-#        print(self.pixmap)
-#        self.stackLabel.setPixmap(self.pixmap)
-#        self.test_record=QSqlRecord()
-#        print(self.test_record.field(self.codeModel.index(self.row, self.column)))
-        
-        print(self.scroll_bar.value())
+        pass
+    def showToolTip(self, index):
+        ima =str(index.data())
+        if 'jpg' in ima.split('.') or 'png' in ima.split('.'):
+            QToolTip.showText(QCursor.pos(),  "<img src='%s'>"%(ima));
+#        else:
+#            QToolTip.showText(QCursor.pos(), ima);
 
-        self.scroll_bar.setValue(self.scroll_bar.value()+2)
-        self.codeModel.setData(self.codeModel.index(self.row, self.column), '1' , Qt.DecorationRole)
-        self.codeModel.submitAll()
-
-
+    def copyImage(self):
+        clipboard = QApplication.clipboard()
+        clipboard.setPixmap(QPixmap(os.path.join(
+        os.path.dirname(__file__), "./images/python.png")))
+    
+    def pasteImage(self):
+        clipboard = QApplication.clipboard()
+        self.imageLabel.setPixmap(clipboard.pixmap())
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
