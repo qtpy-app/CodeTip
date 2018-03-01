@@ -499,14 +499,6 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
 #        else:
 #            QToolTip.showText(QCursor.pos(), ima);
 
-    def copyImage(self):
-        clipboard = QApplication.clipboard()
-        clipboard.setPixmap(QPixmap(os.path.join(
-        os.path.dirname(__file__), "./images/python.png")))
-    
-    def pasteImage(self):
-        clipboard = QApplication.clipboard()
-        self.imageLabel.setPixmap(clipboard.pixmap())
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
