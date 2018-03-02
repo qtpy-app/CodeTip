@@ -8,17 +8,20 @@ from PyQt5.QtSql import *
 
 import sqlite3
 import sip
+import sys
 
 from Ui_MainWindow import Ui_MainWindow
 from aboutMeWidget import AboutMe_Dialog
 from editWidget import Edit_Dialog
 from delegate import SpinBoxDelegate
+sys.path.append('./CustomTitlebar')
+from framelesswindow import FramelessWindow
 
 class MainWindow(QMainWindow, Ui_MainWindow,):
     updateView=pyqtSignal()
     def __init__(self, parent=None, *args):
 
-        super(MainWindow, self).__init__(parent, *args)
+        super(MainWindow, self).__init__(parent,  *args)
         self.setupUi(self)
         #=============================== 工具栏 ================================#
         self.search=QLineEdit()
@@ -59,17 +62,6 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.statusBar.addPermanentWidget(self.helpButton)        
         self.statusBar.addPermanentWidget(self.stackLabel) 
         
-        #=============================== 托盘图标 ================================#
-        self.tray = QSystemTrayIcon(self) #创建系统托盘对象  
-        self.icon = QIcon('db/360ask.png')  #创建图标  
-        self.tray.setIcon(self.icon)  #设置系统托盘图标
-        self.tray_menu = QMenu(QApplication.desktop()) #创建菜单  
-        self.RestoreAction = QAction(u'还原 ', self, triggered=self.show) #添加一级菜单动作选项(还原主窗口)  
-        self.QuitAction = QAction(u'退出 ', self, triggered=qApp.quit) #添加一级菜单动作选项(退出程序)  
-        self.tray_menu.addAction(self.RestoreAction) #为菜单添加动作  
-        self.tray_menu.addAction(self.QuitAction)  
-        self.tray.setContextMenu(self.tray_menu) #设置系统托盘菜单  
-        self.tray.show()
         #=============================== action & Singnal ================================#
         self.addaction.triggered.connect(self.addData)
         self.delaction.triggered.connect(self.deleteData)
@@ -192,28 +184,6 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         '''
         
         return QMainWindow.eventFilter(self, obj, event)
-     
-    def enterEvent(self, event):
-        if(self.x() == self.frame-self.width()):
-            self.move(-self.frame,self.y())
-            #左边
-        elif(self.y() == self.frame-self.height()+self.y()-self.geometry().y()):
-            self.move(self.x(),-self.frame)
-            #上边
-    def leaveEvent(self,event):    
-        cx,cy=QCursor.pos().x(),QCursor.pos().y()
-        
-        if(cx >= self.x() and cx <= self.x()+self.width()
-            and cy >= self.y() and cy <= self.geometry().y()):
-            return#title bar
-
-        elif(self.x() < 0 and QCursor.pos().x()>0):
-            self.move(self.frame-self.width(),self.y())
-            #左边
-            
-        elif(self.y() < 0 and QCursor.pos().y()>0):
-            self.move(self.x(), self.frame-self.height()+self.y()-self.geometry().y())
-            
     
     def initializeModel(self, model, tablename):
         model.setTable(tablename)
@@ -458,7 +428,8 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
 #            self.move(x, y)
             
         if(self.setting.contains("SetTop/isCheck")):   #此节点是否存在该数据
-            self.edit=int(self.setting.value("SetTop/isCheck"))    
+            self.check=int(self.setting.value("SetTop/isCheck"))    
+            self.checkbox.setChecked(self.check)
             
         self.langView.selectRow(self.row)
         self.oldTableName=self.sort_Model.data(self.sort_Model.index(self.row,0))
@@ -470,18 +441,15 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.setting.setValue("Position/y",str(self.geometry().y()));#设置设置y坐标
         self.setting.setValue("Position/w",str(self.width()));#设置宽度
         self.setting.setValue("Position/h",str(self.height()));#设置高度
-        sip.delete(self.tray)
+        self.setting.setValue("SetTop/isCheck",str(self.check));#设置是否置顶
     
     def setTop(self):
+
         if self.checkbox.isChecked():
-            self.setWindowFlags(Qt.WindowStaysOnTopHint)
-            self.check=1
-        else:
-            self.setWindowFlags(Qt.Widget)
             self.check=0
-            
-        if self.isVisible()==False:
-            self.setVisible(True);
+        else:
+            self.check=1
+
     
     def showAboutMe(self):
         self.AboutMe_Dialog = AboutMe_Dialog()
@@ -499,12 +467,22 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
 #        else:
 #            QToolTip.showText(QCursor.pos(), ima);
 
+def setTop(w, check):
+    if check==0:
+        w.setWindowFlags(Qt.WindowStaysOnTopHint|Qt.Tool|Qt.FramelessWindowHint)
+    elif check==1:
+        w.setWindowFlags(Qt.Widget|Qt.Tool|Qt.FramelessWindowHint)
+    if w.isVisible()==False:
+        w.setVisible(True);
+        
 if __name__ == "__main__":
-    import sys
+    
     app = QtWidgets.QApplication(sys.argv)
     # if you want to using this QSS, please pip install qdarkstyle.
     import qdarkstyle
-    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
+    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5()+
+    "QToolTip {opacity: 500;}"+"QToolBar {border-top: 2px groove #696969; padding:0px 0px 0px 5px; }")
+    
     def excepthook(type, value, trace):
         try:
             pass
@@ -513,6 +491,9 @@ if __name__ == "__main__":
         sys.__excepthook__(type, value, trace)
     sys.excepthook = excepthook
     
-    ui=MainWindow()
-    ui.show()
+    ui = MainWindow()
+    framelessWindow=FramelessWindow();
+    framelessWindow.setContent(ui)
+    ui.checkbox.stateChanged.connect(lambda:setTop(framelessWindow , ui.check))
+    framelessWindow.show()
     sys.exit(app.exec_())
