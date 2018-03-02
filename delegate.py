@@ -13,7 +13,7 @@ class SpinBoxDelegate(QItemDelegate, ):
         self.timer=QTimer()
 
     def paint(self, painter, option, index):
-        item=self.getPixmat( index)
+        item=self.getPixmat(index)
         pixmap = item['pixmap']
 #            print(option.rect, type(option.rect))
 #        painter.fillRect(option.rect, option.palette.highlight())
@@ -28,15 +28,15 @@ class SpinBoxDelegate(QItemDelegate, ):
                                 pixmap )
    
     def sizeHint(self, option, index):
-        item=self.getPixmat( index)
+        item=self.getPixmat(index)
         if item['bool']==True:
             width=item['width']
             height=item['height']
             return QSize(width,height)
         else:
-            value=str(index.data())
-            value=value.split('\n')
-            return QSize(option.rect.width(), len(value)*19)
+            w_value = str(index.data())
+            h_value = w_value.split('\n')
+            return QSize(len(w_value)*8, len(h_value)*19)
 
     def createEditor(self, parent, option, index):
 
@@ -45,7 +45,7 @@ class SpinBoxDelegate(QItemDelegate, ):
 
     def setEditorData(self, lineEdit, index):
         value = index.model().data(index, Qt.EditRole)
-        lineEdit.setText(value)
+        lineEdit.setText(str(value))
 
     def setModelData(self, lineEdit, model, index):
         value = lineEdit.text()
@@ -59,15 +59,15 @@ class SpinBoxDelegate(QItemDelegate, ):
         pixmap=QPixmap()
         if 'jpg' in editor.split('.') or 'png' in editor.split('.'):
             pixmap.load(editor)
-            if pixmap.size().width()>150 and pixmap.size().height()<150:
+            if pixmap.size().width()>pixmap.size().width() and pixmap.size().height()<150:
                 return {'pixmap':pixmap, 'bool':True, 
-                    'width':150,
+                    'width':300,
                     'height':pixmap.size().height()}
             elif pixmap.size().width()<150 and pixmap.size().height()>150:
                 return {'pixmap':pixmap, 'bool':True, 
                     'width':pixmap.size().width(),
                     'height':150}
-            elif pixmap.size().width()>150  and pixmap.size().height()>150:
+            elif pixmap.size().width()>150 and pixmap.size().height()>150:
                 return {'pixmap':pixmap, 'bool':True, 
                     'width':150,
                     'height':150}            
@@ -75,8 +75,13 @@ class SpinBoxDelegate(QItemDelegate, ):
                 return {'pixmap':pixmap, 'bool':True, 
                     'width':pixmap.size().width(),
                     'height':pixmap.size().height()}
+            else:
+                return {'pixmap':pixmap, 'bool':True, 
+                    'width':pixmap.size().width(),
+                    'height':pixmap.size().height()}
+
         else:
-            return {'pixmap':pixmap, 'bool':False}
+            return {'pixmap':'可输入文字', 'bool':False}
 
     def eventFilter(self, obj, event):
         if event.type()==QEvent.KeyPress: 
