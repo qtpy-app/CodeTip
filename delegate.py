@@ -85,13 +85,13 @@ class SpinBoxDelegate(QItemDelegate, ):
 
     def eventFilter(self, obj, event):
         if event.type()==QEvent.KeyPress: 
-            if  event.key()== Qt.Key_V and event.modifiers() == Qt.ControlModifier :       
-                filename= 'db/ima/'+time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())+'.jpg'
-                clipboard = QApplication.clipboard()      
+            if  event.key()== Qt.Key_V and event.modifiers() == Qt.ControlModifier :
+                clipboard = QApplication.clipboard()  
                 data = clipboard.mimeData()
                 if data.hasImage():
+                    filename= 'db/ima/'+time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())+'.jpg'
                     data.imageData().save(filename,'JPG',90)
                     im = data.imageData()
                     clipboard.setText(filename)
-                    self.timer.singleShot(200, lambda:clipboard.setImage(im))
+                    self.timer.singleShot(200, lambda:clipboard.setImage(im))     
         return False
