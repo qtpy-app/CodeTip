@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'D:\pyPro\CodeTip\MainWindow.ui'
+# Form implementation generated from reading ui file 'D:\QGroup_432987409\CodeTip\ui\MainWindow.ui'
 #
 # Created by: PyQt5 UI code generator 5.9.2
 #
@@ -60,7 +60,7 @@ class Ui_MainWindow(object):
         self.toolBar.setLayoutDirection(QtCore.Qt.LeftToRight)
         self.toolBar.setOrientation(QtCore.Qt.Horizontal)
         self.toolBar.setObjectName("toolBar")
-        MainWindow.addToolBar(QtCore.Qt.TopToolBarArea, self.toolBar)
+        MainWindow.addToolBar(QtCore.Qt.BottomToolBarArea, self.toolBar)
         self.statusBar = QtWidgets.QStatusBar(MainWindow)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
@@ -77,6 +77,12 @@ class Ui_MainWindow(object):
         self.action12.setObjectName("action12")
         self.actionas = QtWidgets.QAction(MainWindow)
         self.actionas.setObjectName("actionas")
+        self.actiondz = QtWidgets.QAction(MainWindow)
+        self.actiondz.setObjectName("actiondz")
+        self.actiongc = QtWidgets.QAction(MainWindow)
+        self.actiongc.setObjectName("actiongc")
+        self.actiondb = QtWidgets.QAction(MainWindow)
+        self.actiondb.setObjectName("actiondb")
 
         self.retranslateUi(MainWindow)
         self.stackedWidget.setCurrentIndex(0)
@@ -90,6 +96,9 @@ class Ui_MainWindow(object):
         self.saveaction.setShortcut(_translate("MainWindow", "Ctrl+D"))
         self.action12.setText(_translate("MainWindow", "查看帮助文档"))
         self.actionas.setText(_translate("MainWindow", "关于"))
+        self.actiondz.setText(_translate("MainWindow", "dz"))
+        self.actiongc.setText(_translate("MainWindow", "gc"))
+        self.actiondb.setText(_translate("MainWindow", "db"))
 
 
 if __name__ == "__main__":
