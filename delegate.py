@@ -36,8 +36,10 @@ class SpinBoxDelegate(QItemDelegate, ):
         else:
             w_value = str(index.data())
             h_value = w_value.split('\n')
-            return QSize(len(w_value)*8, len(h_value)*19)
-
+            if '\n' not in w_value:
+                return QSize(len(w_value)*7, len(h_value)*19)
+            else:
+                return QSize(option.rect.width(), len(h_value)*19)
     def createEditor(self, parent, option, index):
 
         editor = QLineEdit(parent)
