@@ -457,7 +457,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.check=0
     
     def showAboutMe(self):
-        self.AboutMe_Dialog = AboutMe_Dialog()
+        self.AboutMe_Dialog = AboutMe_Dialog(self)
         self.AboutMe_Dialog.show()
     def recordList(self):        
         record = self.db.record(self.oldTableName)
