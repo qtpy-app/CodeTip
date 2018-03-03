@@ -32,9 +32,5 @@ class WindowDragger(QWidget):
     def mouseDoubleClickEvent(self,event):
         self.doubleClicked.emit()
         
-#    def paintEvent(self,event):        
-##        Q_UNUSED(event);
-#        styleOption = QStyleOption();
-#        styleOption.__init__();
-#        painter = QPainter(self);
-#        self.style().drawPrimitive(QStyle.PE_Widget, styleOption, painter , self);
+    def enterEvent(self, e):
+        self.setCursor(Qt.ArrowCursor)
