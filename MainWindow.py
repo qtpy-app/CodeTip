@@ -17,7 +17,7 @@ from delegate import SpinBoxDelegate
 sys.path.append('./CustomTitlebar')
 from framelesswindow import FramelessWindow
 
-class MainWindow(QMainWindow, Ui_MainWindow,):
+class MainWindow(QMainWindow, Ui_MainWindow):
     updateView=pyqtSignal()
     def __init__(self, parent=None, *args):
 
@@ -45,7 +45,6 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         self.checkbox.setToolTip('置顶该窗口')
         self.check=1
         self.checkbox.stateChanged.connect(self.setTop)  
-        
 
         self.helpButton=QPushButton('？ ？ ？')
         self.helpButton.setToolTip('帮助')        
@@ -184,7 +183,8 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         '''
         
         return QMainWindow.eventFilter(self, obj, event)
-    
+    def enterEvent(self, e):
+        self.setCursor(Qt.ArrowCursor)
     def initializeModel(self, model, tablename):
         model.setTable(tablename)
         model.setEditStrategy(QSqlTableModel.OnFieldChange)
@@ -361,7 +361,7 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
                 if self.codeModel.tableName()=='languages' :
                     deleteTableName=self.codeModel.data(self.model.index(self.row,0))#!
                     if deleteTableName != 'languages':
-                        print(deleteTableName)
+#                        print(deleteTableName)
                         self.codeModel.removeRows(self.row, 1)#删除数据 
                         self.query.exec('DROP TABLE %s'%(deleteTableName))
                 else:
@@ -418,38 +418,43 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
     def getSetting(self):            
         if(self.setting.contains("SelectTable/selectRow")):   #此节点是否存在该数据
             self.row=int(self.setting.value("SelectTable/selectRow"))
-       
-        if(self.setting.contains("Position/x")):   #此节点是否存在该数据
-            x=int(self.setting.value("Position/x"))
-            y=int(self.setting.value("Position/y"))
-            w=int(self.setting.value("Position/w"))
-            h=int(self.setting.value("Position/h"))
-            self.resize(w, h)
-#            self.move(x, y)
-            
+#        if(self.setting.contains("Position/x")):   #此节点是否存在该数据
+#            x=int(self.setting.value("Position/x"))
+#            y=int(self.setting.value("Position/y"))
+#            w=int(self.setting.value("Position/w"))
+#            h=int(self.setting.value("Position/h"))
+#            self.resize(w, h)
+
+#            if x<=0:
+#                self.move(-543, y)
+#            elif x>=823 :
+#                self.move(1356, y)
+#            elif y<=-0:
+#                self.move(x, -299)
+#            elif 0<x<823 and y>0 :
+#                self.move(x, y)
+
         if(self.setting.contains("SetTop/isCheck")):   #此节点是否存在该数据
             self.check=int(self.setting.value("SetTop/isCheck"))    
             self.checkbox.setChecked(self.check)
-            
         self.langView.selectRow(self.row)
         self.oldTableName=self.sort_Model.data(self.sort_Model.index(self.row,0))
         self.initializeModel(self.codeModel, self.oldTableName)#!!!!!!!!!!!!!!!!              
         
     def closeEvent(self, event):
         self.setting.setValue("SelectTable/selectRow",str(self.row));#设置key和value，也就是参数和值  
-        self.setting.setValue("Position/x",str(self.frame-self.width()));#设置x坐标
-        self.setting.setValue("Position/y",str(self.geometry().y()));#设置设置y坐标
-        self.setting.setValue("Position/w",str(self.width()));#设置宽度
-        self.setting.setValue("Position/h",str(self.height()));#设置高度
+#        self.setting.setValue("Position/x",str(self.frame-self.width()));#设置x坐标
+#        self.setting.setValue("Position/y",str(self.parent().y()));#设置设置y坐标
+#        self.setting.setValue("Position/w",str(self.width()));#设置宽度
+#        self.setting.setValue("Position/h",str(self.height()));#设置高度
         self.setting.setValue("SetTop/isCheck",str(self.check));#设置是否置顶
-    
+
     def setTop(self):
 
         if self.checkbox.isChecked():
-            self.check=0
-        else:
             self.check=1
-
+        else:
+            self.check=0
     
     def showAboutMe(self):
         self.AboutMe_Dialog = AboutMe_Dialog()
@@ -465,13 +470,13 @@ class MainWindow(QMainWindow, Ui_MainWindow,):
         if 'jpg' in ima.split('.') or 'png' in ima.split('.'):
             QToolTip.showText(QCursor.pos(),  "<img src='%s'>"%(ima));
 #        else:
-#            QToolTip.showText(QCursor.pos(), ima);
+#            QToolTip.showText(QCursor.pos(),  ima);
 
 def setTop(w, check):
-    if check==0:
+    if check==1:
         w.setWindowFlags(Qt.WindowStaysOnTopHint|Qt.Tool|Qt.FramelessWindowHint)
-    elif check==1:
-        w.setWindowFlags(Qt.Widget|Qt.Tool|Qt.FramelessWindowHint)
+    elif check==0:
+        w.setWindowFlags(Qt.Widget|Qt.FramelessWindowHint)
     if w.isVisible()==False:
         w.setVisible(True);
         
@@ -490,10 +495,17 @@ if __name__ == "__main__":
             pass
         sys.__excepthook__(type, value, trace)
     sys.excepthook = excepthook
-    
-    ui = MainWindow()
-    framelessWindow=FramelessWindow();
+
+    framelessWindow = FramelessWindow();
+    ui = MainWindow(framelessWindow)
+
     framelessWindow.setContent(ui)
     ui.checkbox.stateChanged.connect(lambda:setTop(framelessWindow , ui.check))
+    framelessWindow.closeButton.clicked.connect(ui.close)
+    
     framelessWindow.show()
+    
+#    ui = MainWindow()    
+#    ui.show()
+    
     sys.exit(app.exec_())
