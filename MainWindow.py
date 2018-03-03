@@ -223,7 +223,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     
     def addField(self):  
         if self.oldTableName != 'languages':
-            self.fieldEdit=Edit_Dialog()
+            self.fieldEdit=Edit_Dialog(self)
             self.fieldEdit.setWindowModality(2)#设置为应用程序模态；0:非模态，1:非模态
             self.fieldEdit.show()
             if self.fieldEdit.exec() == QDialog.Accepted:
