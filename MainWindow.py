@@ -300,19 +300,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 #                if self.codeModel.rowCount()==0:
 #                    self.query.exec("INSERT INTO %s values('inputI', 'inputII')"%(tablename))
     def addData(self, ):
-        self.model.submit()
-        try:
-            self.model.insertRows(self.model.rowCount(), 1)
-        except:
-            pass
-        
+
         if self.model.objectName()=='codeModel':
-            index=self.model.index(self.model.rowCount(), 1)
+            self.model.insertRows(self.row, 1)
+            
+            index=self.model.index(self.row+1, 1)
 
 #            defaultValue=''
             self.model.setData(index,'')
             
         elif self.model.objectName()=='sort_Model':
+            self.model.insertRows(self.model.rowCount(), 1)
+            
             index=self.model.index(0, 1)
 
             index2=self.model.index(0, 2)
