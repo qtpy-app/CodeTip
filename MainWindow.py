@@ -18,7 +18,6 @@ sys.path.append('./CustomTitlebar')
 from framelesswindow import FramelessWindow
 
 class MainWindow(QMainWindow, Ui_MainWindow):
-    updateView=pyqtSignal()
     def __init__(self, parent=None, *args):
 
         super(MainWindow, self).__init__(parent,  *args)
@@ -70,6 +69,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         #===============================   db   ======================================#
         self.db = QSqlDatabase.addDatabase('QSQLITE')
         self.db.setDatabaseName('./db/database.db')
+        #================================ Timer ===================================#
+        self.timer=QTimer()        
         #===================================== langue & sort =======================================#
         self.langModel  = QSqlTableModel(); 
         self.initializeModel(self.langModel, 'languages')
@@ -100,6 +101,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.codeModel.setHeaderData(0, Qt.Horizontal, "操作")
         self.codeModel.setHeaderData(1, Qt.Horizontal, "代码")
         self.codeModel.setObjectName('codeModel')
+        self.codeModel.sort (1, 0);#排序，0升序，1降序，下同
+#        self.codeModel.dataChanged.connect(lambda:self.timer.singleShot(300, self.reselect));#排序，0升序，1降序，下同
+        
         
         self.codeView = self.createView("Code_View", self.codeModel)
         self.codeView.clicked.connect(self.findrow)
@@ -112,8 +116,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.codeView.entered['QModelIndex'].connect(self.showToolTip)
 
-        #================================ Timer ===================================#
-        self.timer=QTimer()
+
         #================================= search ===================================#
         self.searchModel=QSqlQueryModel()
         self.searchModel.setHeaderData(0, Qt.Horizontal, "操作")
@@ -159,9 +162,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     if fieldName[-1]==True:
                         self.codeModel.setData(self.codeModel.index(self.row, self.column), fieldName[0])
                     
-            elif event.key()==Qt.Key_Return or event.key()==Qt.Key_Tab:
+            if event.key()==Qt.Key_Return:
                 
                 if obj == self.langView:
+                    print('add')
                     self.timer.singleShot(200, self.addTable)
                     tablename=self.sort_Model.data(self.sort_Model.index(self.row,0))
                     self.initializeModel(self.codeModel, tablename)#!!!!!!!!!!!!!!!!      
@@ -171,9 +175,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     if self.model.tableName()=='languages':
                         self.timer.singleShot(200, self.reselect)
                         self.timer.singleShot(400, self.addTable)
-                    else:
+                    elif self.model.tableName()!='languages':
                         if self.column == self.codeModel.columnCount():
                             self.addData()
+                            print('tab')
 
         ''' 额外知识点
         if event.type() == QEvent.MouseButtonPress:
@@ -219,7 +224,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         popMenu.addAction(u'关于',self.showAboutMe)
         popMenu.exec_(QCursor.pos())#鼠标位置
         #currentColumn 当前列；columnCount()总列数；currentIndex().row()在父节点下的行号
- 
     
     def addField(self):  
         if self.oldTableName != 'languages':
@@ -246,8 +250,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.oldTableName != 'languages':
             record = self.db.record(self.oldTableName)
             record.remove(self.column)
-            t=[record.fieldName(i) for i in range(record.count())]#获取字段名
-            t=','.join(t)#串接
+            t=[record.fieldName(i) for i in range(1, record.count())]#获取字段名
+            t='id INTEGER PRIMARY KEY UNIQUE,'+','.join(t)#串接
             text='''
                 PRAGMA foreign_keys = 0;
                 DROP TABLE IF EXISTS sqlitestudio_temp_table;
@@ -281,6 +285,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def findrow(self, i):
         self.row= i.row()
         self.column=i.column()
+        print(self.model.rowCount())
         self.model=self.sender().model()
         if self.model==self.sort_Model:
             self.getOldTableName()
@@ -302,46 +307,58 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def addData(self, ):
 
         if self.model.objectName()=='codeModel':
-            self.model.insertRows(self.row, 1)
+            for i in range(self.model.rowCount()-1, self.row, -1):
+                index=self.model.index(i, 0)                
+                print('row:', self.row,'i:', i, 'id:', self.model.data(index), 'count:', self.model.rowCount())
+                print(self.model.data(index)+1)
+                self.model.setData(index,self.model.data(index)+1)    
+                
+            self.model.insertRows(self.row+1, 1)
             
-            index=self.model.index(self.row+1, 1)
+            index0=self.model.index(self.row, 0)
+            index10=self.model.index(self.row+1, 0)            
+            index11=self.model.index(self.row+1, 1)
 
-#            defaultValue=''
-            self.model.setData(index,'')
+            self.model.setData(index10,self.model.data(index0)+1)
+            self.model.setData(index11,'')
+            
+
             
         elif self.model.objectName()=='sort_Model':
-            self.model.insertRows(self.model.rowCount(), 1)
-            
+            self.model.insertRows(self.row+1, 1)
+            # ↑ 插入的时候默认在第一行
             index=self.model.index(0, 1)
-
             index2=self.model.index(0, 2)
+
             self.model.setData(index2, 1)#设置为可见
+            defaultValue=int(self.model.data(self.model.index(self.row+1, 1))) + 10
             
-            defaultValue=str(int(self.model.data(self.model.index(self.sort_Model.rowCount()-1, 1))) + 10)
             self.model.setData(index, defaultValue)#设置排序序号
 
     def addTable(self):
         
         if self.model==self.sort_Model:
             tablename=self.model.data(self.model.index(self.model.rowCount()-1, 0))
+            print(tablename)
         elif self.model==self.codeModel:
             tablename=self.model.data(self.model.index(self.row,  0))
         
 #        self.query.exec("CREATE VIRTUAL TABLE %s USING fts5(Operation , Code )"%(tablename))
 
-        self.query.exec("CREATE TABLE %s (Operation , Code )"%(tablename))#建表
+        self.query.exec("CREATE TABLE %s (id  INTEGER PRIMARY KEY UNIQUE, Operation , Code )"%(tablename))#建表
         
-        self.query.exec("INSERT INTO %s values('inputI', 'inputII')"%(tablename)) #建第一条记录
+        self.query.exec("INSERT INTO %s values('1','inputI', 'inputII')"%(tablename)) #建第一条记录
         
         if tablename not in self.db.tables():
             conn = sqlite3.connect('./db/database.db')
             c = conn.cursor()
             try:
-                text="CREATE TABLE %s\
-                   (\
-                   Operation      ,\
-                   Code           ,\
-                   );"%(str(tablename))
+                text='''CREATE TABLE %s
+                   (
+                   id    INTEGER PRIMARY KEY UNIQUE,               
+                   Operation      ,
+                   Code           ,
+                   );'''%(str(tablename))
                 c.execute(text)
                 conn.commit()
             except:
@@ -352,7 +369,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def deleteData(self):
         '''如果当前是第0页：
             codeModel：
-                
+                如果是总表：
+                如果不是总表
             sort_Model
         '''
         if self.stackedWidget.currentIndex() !=1:
@@ -368,6 +386,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         print('remove')
                         self.codeModel.removeRows(self.row, 1)#删除数据 
                         sip.delete(self.codeModel.index(self.row,self.column))
+                        for i in range(self.model.rowCount()-1, self.row, -1):
+                            index=self.model.index(i, 0)                
+                            print('row:', self.row,'i:', i, 'id:', self.model.data(index), 'count:', self.model.rowCount())
+                            self.model.setData(index,self.model.data(index)-1)                           
+           
             elif self.model == self.sort_Model:
                if self.oldTableName != 'languages' and self.model.data(self.model.index(self.row,0))!= 'languages' :
                    self.model.setData(self.sort_Model.index(self.row, 2), 0)
@@ -405,13 +428,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
   
     
     def reselect(self):
-        try:
-            self.model.select() 
-            self.langModel.select()
-            self.sort_Model.select()
-#            self.codeModel.select()
-        except:
-            self.langModel.select()
+        if self.codeModel.data(self.codeModel.index(self.codeModel.rowCount(), 0))!='':        
+            try:
+                self.model.select() 
+                self.langModel.select()
+                self.sort_Model.select()
+    #            self.codeModel.select()
+            except:
+                self.langModel.select()
             
     
     def getSetting(self):            
@@ -484,6 +508,8 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     # if you want to using this QSS, please pip install qdarkstyle.
     import qdarkstyle
+    
+#    app.setStyle(QStyleFactory.create("Fusion"))
     app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5()+
     "QToolTip {opacity: 500;}"+"QToolBar {border-top: 2px groove #696969; padding:0px 0px 0px 5px; }")
     
