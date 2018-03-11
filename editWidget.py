@@ -18,7 +18,6 @@ class Edit_Dialog(QDialog):
         self.okButton.setShortcut( "Alt+Return")
         self.lineEdit.setPlaceholderText('字段名称')
         self.lineEdit_2.setPlaceholderText('默认值(选填)')
-#        print(self.comboBox.currentText())
     
 if __name__ == "__main__":
     import sys
