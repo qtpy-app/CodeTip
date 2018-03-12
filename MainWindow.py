@@ -15,27 +15,63 @@ from editWidget import Edit_Dialog
 from delegate import SpinBoxDelegate
 sys.path.append('./CustomTitlebar')
 from framelesswindow import FramelessWindow
-class Thread(QThread):
-    
-    SignalUpdate = pyqtSignal(str)
-    SignalTime = pyqtSignal(int)
-    
+
+class AddThread(QThread):
+
     def __init__(self, *args, **kwargs):
-        super(Thread, self).__init__(*args, **kwargs)
+        super(AddThread, self).__init__(*args, **kwargs)
     
     def run(self):
-        i = 0
-        while i < 15:
-            self.sleep(5)
-            i += 1
-            self.SignalTime.emit(i)
-        # 完成
-        self.SignalUpdate.emit("ok")
+        print('start', self.model.rowCount())
+        for i in range(self.model.rowCount()-1, self.row, -1): #从最后一行开始自增1
+            index=self.model.index(i, 0)                
+            self.model.setData(index,self.model.data(index)+1)
+        self.model.insertRows(self.row+1, 1)
+        
+        index0=self.model.index(self.row, 0)
+        index10=self.model.index(self.row+1, 0)            
+        index11=self.model.index(self.row+1, 1)
+
+        self.model.setData(index10,self.model.data(index0)+1)
+        self.statusBar.showMessage('增加了一行', 1000)        
+        self.model.setData(index11,'')
+        self.model.submit()
+    def setMRS(self, model, row, statu):
+        self.model = model
+        self.row = row
+        self.statusBar = statu        
+        self.start()
+
+class DelThread(QThread):
+
+    def __init__(self, *args, **kwargs):
+        super(DelThread, self).__init__(*args, **kwargs)
+    
+    def run(self):
+        print('start', self.model.rowCount())
+        self.model.removeRows(self.row, 1)#删除数据 
+        self.reselect()                        
+        for i in range(self.row, self.model.rowCount()):#从删除行开始自减1
+            index=self.model.index(i, 0)                
+            self.model.setData(index,self.model.data(index)-1)
+        self.statusBar.showMessage('删除了一行', 1000)        
+#        self.model.submit()
+    def setMRSF(self, model, row, statu, selectFunc):
+        self.model = model
+        self.row = row
+        self.statusBar = statu
+        self.reselect=selectFunc        
+        self.start()
+
+
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None, *args):
 
         super(MainWindow, self).__init__(parent,  *args)
         self.setupUi(self)
+        #================================ Thread ==================================#
+        self.addThread = AddThread(self)
+        self.delThread = DelThread(self)
         #=============================== 工具栏 ================================#
         self.search=QLineEdit()
         self.search.setPlaceholderText('搜索命令  (Ctrl+F)')
@@ -76,6 +112,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.statusBar.addPermanentWidget(self.stackLabel) 
         
         #=============================== action & Singnal ================================#
+        
         self.addaction.triggered.connect(self.addData)
         self.delaction.triggered.connect(self.deleteData)
         self.freshaction.triggered.connect(self.fresh)
@@ -317,23 +354,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 #            if self.stackedWidget.currentIndex()==0:
 #                if self.codeModel.rowCount()==0:
 #                    self.query.exec("INSERT INTO %s values('inputI', 'inputII')"%(tablename))
-    def addData(self, ):
+    def addData(self):
 
         if self.model.objectName()=='codeModel':
-            
-            for i in range(self.model.rowCount()-1, self.row, -1): #从最后一行开始自增1
-                index=self.model.index(i, 0)                
-                self.model.setData(index,self.model.data(index)+1)    
-                
-            self.model.insertRows(self.row+1, 1)
-            
-            index0=self.model.index(self.row, 0)
-            index10=self.model.index(self.row+1, 0)            
-            index11=self.model.index(self.row+1, 1)
-
-            self.model.setData(index10,self.model.data(index0)+1)
-            self.model.setData(index11,'')
-            
+            self.addThread.setMRS(self.model, self.row, self.statusBar)
+            self.statusBar.clearMessage()
         elif self.model.objectName()=='sort_Model':
             self.model.insertRows(self.row+1, 1)
             # ↑ 插入的时候默认在第一行
@@ -392,11 +417,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         self.query.exec('DROP TABLE %s'%(deleteTableName))
                 else:
                     if self.row!=0:
-                        self.codeModel.removeRows(self.row, 1)#删除数据 
-                        self.reselect()                        
-                        for i in range(self.row, self.model.rowCount()):#从删除行开始自减1
-                            index=self.model.index(i, 0)                
-                            self.model.setData(index,self.model.data(index)-1)                           
+                        self.delThread.setMRSF(self.model, self.row, self.statusBar, self.reselect)   
 
                         
             elif self.model == self.sort_Model:
