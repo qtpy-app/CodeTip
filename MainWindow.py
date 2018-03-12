@@ -15,7 +15,22 @@ from editWidget import Edit_Dialog
 from delegate import SpinBoxDelegate
 sys.path.append('./CustomTitlebar')
 from framelesswindow import FramelessWindow
-
+class Thread(QThread):
+    
+    SignalUpdate = pyqtSignal(str)
+    SignalTime = pyqtSignal(int)
+    
+    def __init__(self, *args, **kwargs):
+        super(Thread, self).__init__(*args, **kwargs)
+    
+    def run(self):
+        i = 0
+        while i < 15:
+            self.sleep(5)
+            i += 1
+            self.SignalTime.emit(i)
+        # 完成
+        self.SignalUpdate.emit("ok")
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None, *args):
 
@@ -23,9 +38,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         #=============================== 工具栏 ================================#
         self.search=QLineEdit()
-        self.search.setPlaceholderText('搜索命令')
+        self.search.setPlaceholderText('搜索命令  (Ctrl+F)')
         
-        self.addaction = QtWidgets.QAction( "添加", self,)
+        self.addaction = QtWidgets.QAction( "添加(Ctrl+B)", self,)
         self.delaction = QtWidgets.QAction( "删除(Ct+D)", self)
         self.freshaction = QtWidgets.QAction("刷新(F5)", self)
         self.saveaction = QtWidgets.QAction("保存", self)
@@ -35,6 +50,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.toolBar.addAction(self.freshaction)
         self.toolBar.addAction(self.delaction)
 
+
+        self.addaction.setShortcut( "Ctrl+B")
         self.delaction.setShortcut( "Ctrl+D")
         self.freshaction.setShortcut( "F5")
         
@@ -99,7 +116,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.codeModel.setHeaderData(0, Qt.Horizontal, "操作")
         self.codeModel.setHeaderData(1, Qt.Horizontal, "代码")
         self.codeModel.setObjectName('codeModel')
-        self.codeModel.sort (1, 0);#排序，0升序，1降序，下同
+#        self.codeModel.sort (1, 0);#排序，0升序，1降序，下同;
 #        self.codeModel.dataChanged.connect(lambda:self.timer.singleShot(300, self.reselect));#排序，0升序，1降序，下同
         
         self.codeView = self.createView("Code_View", self.codeModel)
@@ -131,7 +148,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         #================================ initData ==================================#
         self.row=0
         self.column=0
-        self.frame=1
+#        self.frame=10
         self.oldTableName='' 
         self.newTableName=''
   
@@ -139,6 +156,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.model=self.sort_Model
         self.setting=QSettings('./db/setting.ini', QSettings.IniFormat)
         self.getSetting()
+
         
     def eventFilter(self, obj, event):  
         '''
@@ -158,7 +176,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     if fieldName[-1]==True:
                         self.codeModel.setData(self.codeModel.index(self.row, self.column), fieldName[0])
                     
-            if event.key()==Qt.Key_Return:
+            if event.key()==Qt.Key_Tab or event.key()==Qt.Key_Return:
                 
                 if obj == self.langView:
                     self.timer.singleShot(200, self.addTable)
@@ -171,7 +189,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         self.timer.singleShot(200, self.reselect)
                         self.timer.singleShot(400, self.addTable)
                     elif self.model.tableName()!='languages':
-                        if self.column == self.codeModel.columnCount():
+                        if self.column == self.codeModel.columnCount()-1 and self.row==self.codeModel.rowCount()-1:
                             self.addData()
 
         ''' 额外知识点
@@ -185,6 +203,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def enterEvent(self, e):
         '''自定义标题栏需要重置光标。'''
         self.setCursor(Qt.ArrowCursor)
+    def keyPressEvent(self, event):
+        if event.key()== Qt.Key_F and event.modifiers() == Qt.ControlModifier :
+            self.search.setFocus()
     def initializeModel(self, model, tablename):
         '''重关联。'''
         model.setTable(tablename)
@@ -198,7 +219,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         view.horizontalHeader().setSectionResizeMode(3)#列宽设置
         view.verticalHeader().setSectionResizeMode(3)#行高设置
         view.horizontalHeader().setStretchLastSection(True); #充满列宽
-        view.verticalHeader().setVisible(False)#隐藏行标题
+#        view.verticalHeader().setVisible(False)#隐藏行标题
         view.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)#标题左对齐
         return view  
    
@@ -248,26 +269,27 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             record = self.db.record(self.oldTableName)
             record.remove(self.column)
             t=[record.fieldName(i) for i in range(1, record.count())]#获取字段名
-            t='id INTEGER PRIMARY KEY UNIQUE,'+','.join(t)#串接
+            t0='id,'+','.join(t)#串接
+            t1='id INTEGER PRIMARY KEY UNIQUE,'+','.join(t)#串接
             text='''
                 PRAGMA foreign_keys = 0;
                 DROP TABLE IF EXISTS sqlitestudio_temp_table;
                 CREATE TABLE sqlitestudio_temp_table AS SELECT *
                                                           FROM {tableName};
                 DROP TABLE {tableName};
-                CREATE TABLE {tableName} ({filed});
-                INSERT INTO {tableName} ( {filed} ) SELECT {filed} FROM sqlitestudio_temp_table;
+                CREATE TABLE {tableName} ({filed1});
+                INSERT INTO {tableName} ( {filed0} ) SELECT {filed0} FROM sqlitestudio_temp_table;
                 DROP TABLE sqlitestudio_temp_table;
                 PRAGMA foreign_keys = 1;
-                '''.format(tableName=self.oldTableName, filed=t)    
+                '''.format(tableName=self.oldTableName, filed1=t1, filed0=t0)    
             
             conn = sqlite3.connect('./db/database.db')
             c = conn.cursor()
             try:
                 c.executescript(text)  
                 conn.commit()
-            except e:
-                print(e) 
+            except :
+                pass 
             conn.close() 
                   
         else:
@@ -280,19 +302,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         pass
     
     def findrow(self, i):
+        '''鼠标点击后获取 当前行，当前列，表名；切换表。'''
         self.row= i.row()
         self.column=i.column()
         self.model=self.sender().model()
         if self.model==self.sort_Model:
             self.getOldTableName()
             
-            pixmapList = self.recordList()
-            pixmapColumn=[i for i,x in enumerate(pixmapList) if x.find('图片')!=-1] 
-            try:
-                self.codeModel.setPixColumn(pixmapColumn)
-            except:
-                pass
-            tablename=self.sort_Model.data(self.sort_Model.index(self.row,0))
+            tablename = self.sort_Model.data(self.sort_Model.index(self.row,0))
             self.initializeModel(self.codeModel, tablename)# 切换表！！！！！！！！！
             if self.stackedWidget.currentIndex()==1:
                 self.queryRecord()
@@ -303,7 +320,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def addData(self, ):
 
         if self.model.objectName()=='codeModel':
-            for i in range(self.model.rowCount()-1, self.row, -1):
+            
+            for i in range(self.model.rowCount()-1, self.row, -1): #从最后一行开始自增1
                 index=self.model.index(i, 0)                
                 self.model.setData(index,self.model.data(index)+1)    
                 
@@ -326,12 +344,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             defaultValue=int(self.model.data(self.model.index(self.row+1, 1))) + 10
             
             self.model.setData(index, defaultValue)#设置排序序号
-
+        self.codeModel.submit()        
     def addTable(self):
         
         if self.model==self.sort_Model:
-            tablename=self.model.data(self.model.index(self.model.rowCount()-1, 0))
-            print(tablename)
+            tablename=self.model.data(self.model.index(self.row, 0))
+#            print(tablename)
         elif self.model==self.codeModel:
             tablename=self.model.data(self.model.index(self.row,  0))
         
@@ -376,7 +394,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     if self.row!=0:
                         self.codeModel.removeRows(self.row, 1)#删除数据 
                         self.reselect()                        
-                        for i in range(self.row, self.model.rowCount()):
+                        for i in range(self.row, self.model.rowCount()):#从删除行开始自减1
                             index=self.model.index(i, 0)                
                             self.model.setData(index,self.model.data(index)-1)                           
 
