@@ -564,9 +564,9 @@ if __name__ == "__main__":
     # if you want to using this QSS, please pip install qdarkstyle.
     import qdarkstyle
     
-    app.setStyle(QStyleFactory.create("Fusion"))
-#    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5()+
-#    "QToolTip {opacity: 500;}"+"QToolBar {border-top: 2px groove #696969; padding:0px 0px 0px 5px; }")
+#    app.setStyle(QStyleFactory.create("Fusion"))
+    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5()+
+    "QToolTip {opacity: 500;}"+"QToolBar {border-top: 2px groove #696969; padding:0px 0px 0px 5px; }")
     
     def excepthook(type, value, trace):
         try:
