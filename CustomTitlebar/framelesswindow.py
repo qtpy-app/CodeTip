@@ -34,7 +34,7 @@ class FramelessWindow(QWidget, Ui_FramelessWindow):
         self.tray.setIcon(self.icon)  #设置系统托盘图标
         self.tray_menu = QMenu(QApplication.desktop()) #创建菜单  
         self.RestoreAction = QAction(u'还原 ', self, triggered=self.show) #添加一级菜单动作选项(还原主窗口)  
-        self.QuitAction = QAction(u'退出 ', self, triggered=qApp.quit) #添加一级菜单动作选项(退出程序)  
+        self.QuitAction = QAction(u'退出 ', self, triggered=self.close) #添加一级菜单动作选项(退出程序)  
         self.tray_menu.addAction(self.RestoreAction) #为菜单添加动作  
         self.tray_menu.addAction(self.QuitAction)  
         self.tray.setContextMenu(self.tray_menu) #设置系统托盘菜单  
@@ -306,8 +306,10 @@ class FramelessWindow(QWidget, Ui_FramelessWindow):
     def setTop(w, check):
         if check==1:
             w.setWindowFlags(Qt.WindowStaysOnTopHint|Qt.Tool|Qt.FramelessWindowHint)
+#            w.setWindowFlags(Qt.WindowStaysOnTopHint|Qt.FramelessWindowHint)
         elif check==0:
             w.setWindowFlags(Qt.Widget|Qt.Tool|Qt.FramelessWindowHint)
+#            w.setWindowFlags(Qt.Widget|Qt.FramelessWindowHint)
         if w.isVisible()==False:
             w.setVisible(True);
             
