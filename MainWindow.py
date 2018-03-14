@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtSql import *
 
 import sqlite3
-import sys
+import sys, time
 
 from Ui_MainWindow import Ui_MainWindow
 from aboutMeWidget import AboutMe_Dialog
@@ -22,20 +22,27 @@ class AddThread(QThread):
         super(AddThread, self).__init__(*args, **kwargs)
     
     def run(self):
-        print('start', self.model.rowCount())
-        for i in range(self.model.rowCount()-1, self.row, -1): #从最后一行开始自增1
-            index=self.model.index(i, 0)                
-            self.model.setData(index,self.model.data(index)+1)
-        self.model.insertRows(self.row+1, 1)
-        
-        index0=self.model.index(self.row, 0)
-        index10=self.model.index(self.row+1, 0)            
-        index11=self.model.index(self.row+1, 1)
+        if self.isRunning():
+#            time.sleep(0.1)
+            for i in range(self.model.rowCount()-1, self.row, -1): #从最后一行开始自增1
+                index=self.model.index(i, 0)                
+                self.model.setData(index,self.model.data(index)+1)
+                QApplication.processEvents()
+            self.model.insertRows(self.row+1, 1)
+            
+            index0=self.model.index(self.row, 0)
+            index10=self.model.index(self.row+1, 0)            
+            index11=self.model.index(self.row+1, 1)
+    
+            self.model.setData(index10,self.model.data(index0)+1)
 
-        self.model.setData(index10,self.model.data(index0)+1)
-        self.statusBar.showMessage('增加了一行', 1000)        
-        self.model.setData(index11,'')
-        self.model.submit()
+
+            self.statusBar.showMessage('增加了一行', 1000)        
+            self.model.setData(index11,'')
+            self.model.submit()
+#                time.sleep(0.2)
+            self.statusBar.clearMessage()
+        self.exit()
     def setMRS(self, model, row, statu):
         self.model = model
         self.row = row
@@ -48,13 +55,22 @@ class DelThread(QThread):
         super(DelThread, self).__init__(*args, **kwargs)
     
     def run(self):
-        print('start', self.model.rowCount())
-        self.model.removeRows(self.row, 1)#删除数据 
-        self.reselect()                        
-        for i in range(self.row, self.model.rowCount()):#从删除行开始自减1
-            index=self.model.index(i, 0)                
-            self.model.setData(index,self.model.data(index)-1)
-        self.statusBar.showMessage('删除了一行', 1000)        
+        if self.isRunning():
+            time.sleep(0.1)
+            
+            if self.row < self.model.rowCount():
+                self.model.removeRows(self.row, 1)#删除数据 
+                self.reselect()                        
+
+                for i in range(self.row, self.model.rowCount()):#从删除行开始自减1
+                    index=self.model.index(i, 0)                
+                    self.model.setData(index,self.model.data(index)-1)
+                    QApplication.processEvents()
+
+                self.statusBar.showMessage('删除了一行', 1000)
+                self.statusBar.clearMessage()
+        self.exit()
+
 #        self.model.submit()
     def setMRSF(self, model, row, statu, selectFunc):
         self.model = model
@@ -209,7 +225,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if event.key()== Qt.Key_Return and event.modifiers() == Qt.AltModifier :
                 if obj == self.codeView:
                     text=str(self.codeModel.data(self.codeModel.index(self.row, self.column)))
-                    fieldName = QInputDialog.getMultiLineText(self, '列名','请输入', text)#QInputDialog返回的是元组
+                    gotext=QInputDialog()
+                    gotext.setOption(2)
+#                    gotext.setOkButtonText('&OK')
+#                    print(gotext.buttonBox)
+                    fieldName = gotext.getMultiLineText(self, '列名','请输入', text)#QInputDialog返回的是元组
+#                    print(gotext.lab())
                     if fieldName[-1]==True:
                         self.codeModel.setData(self.codeModel.index(self.row, self.column), fieldName[0])
                     
@@ -256,7 +277,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         view.horizontalHeader().setSectionResizeMode(3)#列宽设置
         view.verticalHeader().setSectionResizeMode(3)#行高设置
         view.horizontalHeader().setStretchLastSection(True); #充满列宽
-#        view.verticalHeader().setVisible(False)#隐藏行标题
+        view.verticalHeader().setVisible(False)#隐藏行标题
         view.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)#标题左对齐
         return view  
    
@@ -357,8 +378,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def addData(self):
 
         if self.model.objectName()=='codeModel':
-            self.addThread.setMRS(self.model, self.row, self.statusBar)
-            self.statusBar.clearMessage()
+            self.addThread.setMRS(self.codeModel, self.row, self.statusBar)
         elif self.model.objectName()=='sort_Model':
             self.model.insertRows(self.row+1, 1)
             # ↑ 插入的时候默认在第一行
@@ -375,6 +395,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.model==self.sort_Model:
             tablename=self.model.data(self.model.index(self.row, 0))
 #            print(tablename)
+            QApplication.processEvents()
         elif self.model==self.codeModel:
             tablename=self.model.data(self.model.index(self.row,  0))
         
@@ -417,9 +438,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         self.query.exec('DROP TABLE %s'%(deleteTableName))
                 else:
                     if self.row!=0:
-                        self.delThread.setMRSF(self.model, self.row, self.statusBar, self.reselect)   
 
-                        
+                        self.delThread.setMRSF(self.codeModel, self.row, self.statusBar, self.reselect)   
+
             elif self.model == self.sort_Model:
                if self.oldTableName != 'languages' and self.model.data(self.model.index(self.row,0))!= 'languages' :
                    self.model.setData(self.sort_Model.index(self.row, 2), 0)
@@ -543,9 +564,9 @@ if __name__ == "__main__":
     # if you want to using this QSS, please pip install qdarkstyle.
     import qdarkstyle
     
-#    app.setStyle(QStyleFactory.create("Fusion"))
-    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5()+
-    "QToolTip {opacity: 500;}"+"QToolBar {border-top: 2px groove #696969; padding:0px 0px 0px 5px; }")
+    app.setStyle(QStyleFactory.create("Fusion"))
+#    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5()+
+#    "QToolTip {opacity: 500;}"+"QToolBar {border-top: 2px groove #696969; padding:0px 0px 0px 5px; }")
     
     def excepthook(type, value, trace):
         try:
