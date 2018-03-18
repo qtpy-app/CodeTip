@@ -93,7 +93,7 @@ class SpinBoxDelegate(QItemDelegate, ):
                 
                 clipboard = QApplication.clipboard()  
                 data = clipboard.mimeData()
-                if data.hasImage():
+                if data.hasImage():             
                     filename= 'db/ima/'+time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())+'.jpg'
                     data.imageData().save(filename,'JPG',90)
                     im = data.imageData()
