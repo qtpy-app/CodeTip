@@ -29,14 +29,18 @@ class FramelessWindow(QWidget, Ui_FramelessWindow):
         self.setWindowFlags( Qt.FramelessWindowHint)
         
         #=============================== 托盘图标 ================================#
-        self.tray = QSystemTrayIcon(self) #创建系统托盘对象  
         self.icon = QIcon('./db/360ask.png')  #创建图标  
+
+        self.tray = QSystemTrayIcon(self) #创建系统托盘对象  
         self.tray.setIcon(self.icon)  #设置系统托盘图标
-        self.tray_menu = QMenu(QApplication.desktop()) #创建菜单  
+        
         self.RestoreAction = QAction(u'还原 ', self, triggered=self.show) #添加一级菜单动作选项(还原主窗口)  
         self.QuitAction = QAction(u'退出 ', self, triggered=self.close) #添加一级菜单动作选项(退出程序)  
+
+        self.tray_menu = QMenu(QApplication.desktop()) #创建菜单  
         self.tray_menu.addAction(self.RestoreAction) #为菜单添加动作  
         self.tray_menu.addAction(self.QuitAction)  
+        
         self.tray.setContextMenu(self.tray_menu) #设置系统托盘菜单  
         self.tray.show()
         
@@ -184,6 +188,9 @@ class FramelessWindow(QWidget, Ui_FramelessWindow):
 
 #=================== 贴 边 隐 藏 ===================↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
     def enterEvent(self, event):
+
+        self.setCursor(QCursor(Qt.ArrowCursor))  
+            
         if(self.x() == self._padding-self.width()):
             self.move(-self._padding+5,self.y())
             #左边
@@ -284,7 +291,8 @@ class FramelessWindow(QWidget, Ui_FramelessWindow):
         rect.setHeight(rect.height() );
         painter.drawRoundedRect(rect, 8, 8);
         
-    def _getSetting(self):            
+    def _getSetting(self):    
+        desktop_x=QApplication.desktop().screenGeometry().width()        
         if(self.setting.contains("Position/x")):   #此节点是否存在该数据
             x=int(self.setting.value("Position/x"))
             y=int(self.setting.value("Position/y"))
@@ -292,14 +300,18 @@ class FramelessWindow(QWidget, Ui_FramelessWindow):
             h=int(self.setting.value("Position/h"))
             self.resize(w, h)
             
-            if x<=0:
-                self.move(-543, y)
-            elif x>=823 :
-                self.move(1356, y)
-            elif y<=-0:
-                self.move(x, -299)
-            elif 0<x<823 and y>0 :
-                self.move(x, y)
+            if x<=0:  
+                if y<0: #x<0 , 且y<0;
+                    self.move(x, self._padding-y)
+                elif y>0:
+                    self.move(self._padding-w, y)                    
+            elif x>=desktop_x-w :#在右上角
+                    self.move(desktop_x-self._padding, y)
+            elif 0<x<desktop_x-w :
+                if y>0:
+                    self.move(x, y)
+                elif y<0:
+                    self.move(x, self._padding-y)
             
             check = int(self.setting.value("SetTop/isCheck"))  
             self.setTop(check)
@@ -333,6 +345,7 @@ class FramelessWindow(QWidget, Ui_FramelessWindow):
         self.setting.setValue("Position/y",str(self.y()));#设置设置y坐标
         self.setting.setValue("Position/w",str(self.width()));#设置宽度
         self.setting.setValue("Position/h",str(self.height()));#设置高度
+        sip.delete(self.tray)
 
 if __name__ == "__main__":
     import sys
