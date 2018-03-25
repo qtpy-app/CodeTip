@@ -9,7 +9,7 @@ from PyQt5.uic import loadUi
 
 #from Ui_aboutMe import Ui_aboutMe_Dialog
 import webbrowser
-
+import codetip_qrc_rc
 
 class AboutMe_Dialog(QMainWindow):
 
@@ -29,4 +29,4 @@ if __name__ == "__main__":
     ui = AboutMe_Dialog()
     ui.show()
     sys.exit(app.exec_())
-import codetip_qrc_rc
+
