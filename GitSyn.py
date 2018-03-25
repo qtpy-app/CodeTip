@@ -1,9 +1,9 @@
 import os, traceback, platform, threading
 from subprocess import call
 
-from PyQt5.QtWidgets import QInputDialog, QDialog, QMessageBox
+from PyQt5.QtWidgets import QInputDialog, QDialog, QMessageBox, QWidget
 from PyQt5.QtGui import QIcon, QPixmap
-from PyQt5.QtCore import QSettings, QThread
+from PyQt5.QtCore import QSettings
 from git import *
 
 
@@ -55,16 +55,16 @@ class Git_Syn(object):
                 remoteName=Git_Syn.R_W_setting()
                 repo=Repo('.')
                 git = repo.git
-                git.remote('remove', remoteName)
-                Git_Syn.creatGit(parent,systemTpye)
+                try:
+                    git.remote('remove', remoteName)
+                    Git_Syn.creatGit(parent,systemTpye)
+                except:
+                    Git_Syn.creatGit(parent,systemTpye)
         else:#不存在.git,创建.git
             Git_Syn.creatGit(parent, systemTpye)
-          
-
     
     @classmethod
-    def gitPush(cls, parent, *action):
-        action[0].setEnabled(False)
+    def gitPush(cls, parent, ):
         remoteName=Git_Syn.R_W_setting()
         repo=Repo('.')
         git = repo.git
@@ -72,25 +72,51 @@ class Git_Syn(object):
             git.add('db')
             git.commit('-m', 'This is a db.')
         except:
-            Git_Syn.creatMsg(parent)
+            errmsg = traceback.format_exc()
+            try:
+                if 'nothing added to' in errmsg:
+                    pass
+                else:Git_Syn.creatMsg(parent)
+            except:
+                pass
         try:
-            push = PushThread(remoteName, git, action[0])
-            push.start()
+            push = PushThread(remoteName, git)
+            return push
         except Exception :
             Git_Syn.creatMsg(parent)
     @classmethod
-    def gitPull(cls, parent, *action):
-        action[0].setEnabled(False)
+    def gitPull(cls, parent):
         remoteName=Git_Syn.R_W_setting()        
         repo=Repo('.')
         git = repo.git
         try:
-            pull = PullThread(remoteName, git, action[0])
-            pull.start()
-        except Exception :
-
-            Git_Syn.creatMsg(parent)
-            
+            pull = PullThread(remoteName, git)
+            return pull
+        except :
+            try:
+                if 'nothing added to' in errmsg:
+                    pass
+                else:Git_Syn.creatMsg(parent)
+            except:
+                pass            
+    @classmethod            
+    def push_pull(cls, parent, type):
+#        remoteName = Git_Syn.R_W_setting(parent)      
+#        git = Repo('.').git        
+        pushaction=Git_Syn.gitPush(parent)
+        pullaction=Git_Syn.gitPull(parent)
+        if type==7:#上传
+            if not pullaction.isAlive():#not runing:
+                pushaction.start()
+            else:
+                QMessageBox.information(parent, '注意！', '正在下载，请稍后重试。')
+        elif type==8:#下载
+            if not pushaction.isAlive(): #not runing:
+                pullaction.start()
+            else:
+                QMessageBox.information(parent, '注意！', '正在上传，请稍后重试。')    
+    
+    
     def creatGit(parent,systemTpye):
         '''
         创建远程仓库。
@@ -128,7 +154,7 @@ class Git_Syn(object):
                 git.add('db')
                 git.commit('-m', 'This is a db.')
             except:
-                creatMsg(parent)
+                Git_Syn.creatMsg(parent)
         
             gitDialog.setLabelText('远程仓库: ')
             gitDialog.setWindowIcon(icon)
@@ -178,27 +204,25 @@ class Git_Syn(object):
         gitMsg.exec_()	
 
 class PushThread(threading.Thread):
-
-    def __init__(self, remoteName, git, action):
+    def __init__(self, remoteName, git):
         super(PushThread, self).__init__()
         self.remoteName=remoteName
         self.git=git
-        self.pullaction=action
     def run(self):
         self.git.push('-u', self.remoteName, 'master')
-#        self.exit()
-        self.pullaction.setEnabled(True)
-        
         
 class PullThread(threading.Thread):
-
-    def __init__(self, remoteName, git, action):
+    def __init__(self, remoteName, git):
         super(PullThread, self).__init__()
         self.remoteName=remoteName
         self.git=git
-        self.pushaction=action
     def run(self):
-        self.git.pull( self.remoteName,  'master', '--allow-unrelated-histories')
-#        self.exit()
-        self.pushaction.setEnabled(True)
+        try:
+            self.git.pull('--rebase', self.remoteName, 'master')
+        except:
+            errmsg = traceback.format_exc()
+            if 'find remote ref master' in errmsg:
+                pass
+            else:
+                QMessageBox(QWidget(),'错误!', errmsg)
 
