@@ -1,20 +1,19 @@
 #-*- coding: utf-8 -*-
 
-from PyQt5 import  QtWidgets
+from PyQt5 import  QtWidgets, QtGui, QtCore
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtSql import *
 
 import sqlite3
-import sys, time
+import sys,  os
 
 from Ui_MainWindow import Ui_MainWindow
 from aboutMeWidget import AboutMe_Dialog
 from editWidget import Edit_Dialog
 from delegate import SpinBoxDelegate
-sys.path.append('./CustomTitlebar')
-from framelesswindow import FramelessWindow
+from GitSyn import Git_Syn
 
 class AddThread(QThread):
 
@@ -35,7 +34,6 @@ class AddThread(QThread):
             index11=self.model.index(self.row+1, 1)
     
             self.model.setData(index10,self.model.data(index0)+1)
-
 
             self.statusBar.showMessage('增加了一行', 1000)        
             self.model.setData(index11,'')
@@ -70,14 +68,28 @@ class DelThread(QThread):
                 self.statusBar.showMessage('删除了一行', 1000)
                 self.statusBar.clearMessage()
         self.exit()
-
-#        self.model.submit()
     def setMRSF(self, model, row, statu, selectFunc):
         self.model = model
         self.row = row
         self.statusBar = statu
         self.reselect=selectFunc        
         self.start()
+		
+
+#        self.model.submit()
+
+#class ClsThread(QThread):
+#    def __init__(self, *args, **kwargs):
+#        super(ClsThread, self).__init__(*args, **kwargs)
+#    
+#    def run(self):
+#        print(self.dbs)
+#        self.exit()
+#        
+#    def setDR(self, dbs,  recordFunc):
+#        self.dbs = dbs
+#        self.recordList=recordFunc        
+#        self.start()
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -102,7 +114,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.toolBar.addAction(self.freshaction)
         self.toolBar.addAction(self.delaction)
 
-
         self.addaction.setShortcut( "Ctrl+B")
         self.delaction.setShortcut( "Ctrl+D")
         self.freshaction.setShortcut( "F5")
@@ -114,7 +125,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.checkbox.stateChanged.connect(self.setTop)  
 
         self.helpButton=QPushButton('？ ？ ？')
-        self.helpButton.setToolTip('帮助')        
+        self.helpButton.setToolTip('帮助')  
         font = QFont()
         font.setPointSize(6)
         self.helpButton.setFont(font)
@@ -132,7 +143,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.addaction.triggered.connect(self.addData)
         self.delaction.triggered.connect(self.deleteData)
         self.freshaction.triggered.connect(self.fresh)
-        self.search.returnPressed.connect(self.queryRecord)
+        self.search.returnPressed.connect(lambda:self.queryRecord(self .search.text(), self.oldTableName))
 
         #===============================   db   ======================================#
         self.db = QSqlDatabase.addDatabase('QSQLITE')
@@ -297,9 +308,32 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         popMenu =QMenu()
 #        popMenu.addAction(u'查询帮助文档',self.deleteData)
         popMenu.addAction(u'关于',self.showAboutMe)
+        popMenu.addSeparator()
+        popMenu.addAction(u'清理图片',self.clearPic)
+        popMenu.addSeparator()
+        gitMenu=QMenu('同步到Git', popMenu)
+        
+        self.pushAction=QAction(u'上传', self, triggered=lambda:self.gitRemote(7))
+        gitMenu.addAction(self.pushAction)
+        
+        self.pullAction=QAction(u'下载', self, triggered=lambda:self.gitRemote(8))
+        gitMenu.addAction(self.pullAction)
+
+        gitMenu.addSeparator()
+        gitMenu.addAction(u'配置仓库',lambda:self.gitRemote(0))
+
+        popMenu.addAction(gitMenu.menuAction())#!!
         popMenu.exec_(QCursor.pos())#鼠标位置
         #currentColumn 当前列；columnCount()总列数；currentIndex().row()在父节点下的行号
-    
+
+    def gitRemote(self, type):
+        if type==0:
+            Git_Syn.init(self)#配置
+
+        elif type==7:
+            Git_Syn.gitPush(self, self.pullAction)#上传 , 把下载行为禁止
+        elif type==8:
+            Git_Syn.gitPull(self, self.pushAction )#下载, 把上传行为禁止
     def addField(self): 
         '''添加字段。''' 
         if self.oldTableName != 'languages':
@@ -370,7 +404,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             tablename = self.sort_Model.data(self.sort_Model.index(self.row,0))
             self.initializeModel(self.codeModel, tablename)# 切换表！！！！！！！！！
             if self.stackedWidget.currentIndex()==1:
-                self.queryRecord()
+                self.queryRecord(self .search.text(), self.oldTableName)
 #        elif self.model==self.codeModel:                
 #            if self.stackedWidget.currentIndex()==0:
 #                if self.codeModel.rowCount()==0:
@@ -454,27 +488,29 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def getNewTableName(self):
         '''修改表名。'''
-        self.newTableName = self.sort_Model.data(self.sort_Model.index(self.row,0))
+        if self.column==0:
+            self.newTableName = self.sort_Model.data(self.sort_Model.index(self.row,0))
         #ALTER TABLE 旧表名 RENAME TO 新表名
-        self.query.exec('ALTER TABLE %s RENAME TO %s'%(self.oldTableName, self.newTableName))        
+            self.query.exec('ALTER TABLE %s RENAME TO %s'%(self.oldTableName, self.newTableName))        
   
-    def queryRecord(self):
+    def queryRecord(self, searchtext , table, page=1):
         '''实现模糊查询。'''
-        self.stackedWidget.setCurrentIndex(1)  
+        self.stackedWidget.setCurrentIndex(page)  
         if self.stackLabel.text()!='当前为【查询】结果':
             self.stackLabel.setText('当前为【查询】结果')
             
-        search = str('%'+self.search.text()+'%')
+        search = str('%'+searchtext+'%')
         
-        t=self.recordList()
+        t=self.recordList(table)
         t=(" LIKE '%s' or "%(search)).join(t)#串接
         t=t+" LIKE '%s' "%(search)
-        queryText = "SELECT * FROM %s WHERE %s;"%(self.oldTableName, t )
+        queryText = "SELECT * FROM %s WHERE %s;"%(table, t )
 
 #        queryText="SELECT * FROM %s WHERE %s MATCH '%s';"%(self.oldTableName, self.oldTableName ,self.search.text())#全文检索
     
         self.searchModel.setQuery(queryText)
-
+        
+        return self.searchModel.rowCount()
     def fresh(self):
         '''返回记录表。'''
         self.stackedWidget.setCurrentIndex(0)
@@ -537,9 +573,32 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def showAboutMe(self):
         self.AboutMe_Dialog = AboutMe_Dialog(self)
         self.AboutMe_Dialog.show()
-    def recordList(self):
-        '''获取表的所有字段，返回列表。'''        
-        record = self.db.record(self.oldTableName)
+    def clearPic(self):
+        dbs=self.db.tables()
+        dbs.remove('languages')
+#        self.clsThread.setDR(dbs, self.recordList)      
+        hasimage=[]
+        for db in dbs:
+            row = self.queryRecord('jpg', db,  0)
+            records = self.recordList(db)
+            column = len(records)
+            if row !=0:
+                for  r in range(row):
+                    for c in range(1, column):
+                        hasimage.append(self.searchModel.data(self.searchModel.index(r, c)))                        
+        
+        hasimage=[x.split(r'/')[-1] for  x in hasimage if x.find('jpg')!=-1]
+
+        hasimage=set(hasimage)
+        file=set(os.listdir('db/ima'))
+        delete=file-hasimage
+
+        for i in delete:
+            os.remove('db/ima/%s'%i)
+            
+    def recordList(self, db):
+        '''获取表的所有字段，返回列表。''' 
+        record = self.db.record(db)
         list=[record.fieldName(i) for i in range(record.count())]#获取字段名
         return list
     def showToolTip(self, index):
@@ -575,16 +634,18 @@ if __name__ == "__main__":
             pass
         sys.__excepthook__(type, value, trace)
     sys.excepthook = excepthook
-
+    
+    sys.path.append('./CustomTitlebar')
+    from framelesswindow import FramelessWindow
     framelessWindow = FramelessWindow();
     ui = MainWindow(framelessWindow)
-
     framelessWindow.setContent(ui)
-    ui.checkbox.stateChanged.connect(lambda:setTop(framelessWindow , ui.check))
-    framelessWindow.closeButton.clicked.connect(ui.close)
-    
     framelessWindow.show()
     
+    framelessWindow.closeButton.clicked.connect(ui.close)
+    framelessWindow.QuitAction.triggered.connect(ui.close)
+    ui.checkbox.stateChanged.connect(lambda:setTop(framelessWindow , ui.check))
+
 #    ui = MainWindow()    
 #    ui.show()
     
