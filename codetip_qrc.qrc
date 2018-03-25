@@ -1,5 +1,6 @@
 <RCC>
   <qresource>
+    <file>ima/git.ico</file>
     <file>ima/QQ群.png</file>
     <file>ima/微信.jpg</file>
   </qresource>
