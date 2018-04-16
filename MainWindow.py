@@ -7,90 +7,16 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtSql import *
 
 import sqlite3
-import sys,  os
+import sys,  os, time
 
+sys.path.append('./ui')
 from Ui_MainWindow import Ui_MainWindow
 from aboutMeWidget import AboutMe_Dialog
 from editWidget import Edit_Dialog
 from delegate import SpinBoxDelegate
 from GitSyn import Git_Syn
 
-class AddThread(QThread):
-
-    def __init__(self, *args, **kwargs):
-        super(AddThread, self).__init__(*args, **kwargs)
-    
-    def run(self):
-        if self.isRunning():
-#            time.sleep(0.1)
-            for i in range(self.model.rowCount()-1, self.row, -1): #从最后一行开始自增1
-                index=self.model.index(i, 0)                
-                self.model.setData(index,self.model.data(index)+1)
-                QApplication.processEvents()
-            self.model.insertRows(self.row+1, 1)
-            
-            index0=self.model.index(self.row, 0)
-            index10=self.model.index(self.row+1, 0)            
-            index11=self.model.index(self.row+1, 1)
-    
-            self.model.setData(index10,self.model.data(index0)+1)
-
-            self.statusBar.showMessage('增加了一行', 1000)        
-            self.model.setData(index11,'')
-            self.model.submit()
-#                time.sleep(0.2)
-            self.statusBar.clearMessage()
-        self.exit()
-    def setMRS(self, model, row, statu):
-        self.model = model
-        self.row = row
-        self.statusBar = statu        
-        self.start()
-
-class DelThread(QThread):
-
-    def __init__(self, *args, **kwargs):
-        super(DelThread, self).__init__(*args, **kwargs)
-    
-    def run(self):
-        if self.isRunning():
-            time.sleep(0.1)
-            
-            if self.row < self.model.rowCount():
-                self.model.removeRows(self.row, 1)#删除数据 
-                self.reselect()                        
-
-                for i in range(self.row, self.model.rowCount()):#从删除行开始自减1
-                    index=self.model.index(i, 0)                
-                    self.model.setData(index,self.model.data(index)-1)
-                    QApplication.processEvents()
-
-                self.statusBar.showMessage('删除了一行', 1000)
-                self.statusBar.clearMessage()
-        self.exit()
-    def setMRSF(self, model, row, statu, selectFunc):
-        self.model = model
-        self.row = row
-        self.statusBar = statu
-        self.reselect=selectFunc        
-        self.start()
-		
-
-#        self.model.submit()
-
-#class ClsThread(QThread):
-#    def __init__(self, *args, **kwargs):
-#        super(ClsThread, self).__init__(*args, **kwargs)
-#    
-#    def run(self):
-#        print(self.dbs)
-#        self.exit()
-#        
-#    def setDR(self, dbs,  recordFunc):
-#        self.dbs = dbs
-#        self.recordList=recordFunc        
-#        self.start()
-
+from ConsoleWindow import *
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None, *args):
@@ -104,8 +30,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.search=QLineEdit()
         self.search.setPlaceholderText('搜索命令  (Ctrl+F)')
         
-        self.addaction = QtWidgets.QAction( "添加(Ctrl+B)", self,)
-        self.delaction = QtWidgets.QAction( "删除(Ct+D)", self)
+        self.addaction = QtWidgets.QAction( self.tr("添加(Ctrl+B)"), self,)
+        self.delaction = QtWidgets.QAction( self.tr("删除(Ct+D)"), self)
         self.freshaction = QtWidgets.QAction("刷新(F5)", self)
         self.saveaction = QtWidgets.QAction("保存", self)
 
@@ -162,7 +88,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
         self.langView = self.createView("Langue_View", self.langModel)
         self.langView.clicked.connect(self.findrow)
-        self.langView.horizontalHeader().setSectionResizeMode(3)#列宽设置
+        self.langView.horizontalHeader().setSectionResizeMode(2)#列宽设置
         
         self.sort_Model =  QSortFilterProxyModel(); 
         self.sort_Model.setObjectName('sort_Model')
@@ -220,8 +146,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.model=self.sort_Model
         self.setting=QSettings('./db/setting.ini', QSettings.IniFormat)
         self.getSetting()
-
-        
+        self.splitter.setStretchFactor (0, 15)
+        self.splitter.setStretchFactor (1, 85)
+        self.setAutoFillBackground(True)
     def eventFilter(self, obj, event):  
         '''
         键盘事件：如果是Alt+回车键，则弹多行文本框； <br>
@@ -304,21 +231,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     
     def helpMenu(self):       
         '''帮助按钮的右键菜单'''
-        
         popMenu =QMenu()
+        
 #        popMenu.addAction(u'查询帮助文档',self.deleteData)
         popMenu.addAction(u'关于',self.showAboutMe)
         popMenu.addSeparator()
         popMenu.addAction(u'清理图片',self.clearPic)
         popMenu.addSeparator()
-        gitMenu=QMenu('同步到Git', popMenu)
         
+        gitMenu=QMenu('同步到Git', popMenu)
+
         self.pushAction=QAction(u'上传', self, triggered=lambda:self.gitRemote(7))
         gitMenu.addAction(self.pushAction)
         
         self.pullAction=QAction(u'下载', self, triggered=lambda:self.gitRemote(8))
         gitMenu.addAction(self.pullAction)
-
+        
         gitMenu.addSeparator()
         gitMenu.addAction(u'配置仓库',lambda:self.gitRemote(0))
 
@@ -329,16 +257,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def gitRemote(self, type):
         if type==0:
             Git_Syn.init(self)#配置
-
         elif type==7:
-            Git_Syn.gitPush(self, self.pullAction)#上传 , 把下载行为禁止
+            Git_Syn.push_pull(self, type)#上传 , 把下载行为禁止
         elif type==8:
-            Git_Syn.gitPull(self, self.pushAction )#下载, 把上传行为禁止
+            Git_Syn.push_pull(self, type )#下载, 把上传行为禁止
     def addField(self): 
         '''添加字段。''' 
         if self.oldTableName != 'languages':
             self.fieldEdit=Edit_Dialog(self)
-            self.fieldEdit.setWindowModality(2)#设置为应用程序模态；0:非模态，1:非模态
+            self.fieldEdit.setWindowModality(2)#设置为应用程序模态；0:非模态，1:非模态,2.应用程序模态
             self.fieldEdit.show()
             if self.fieldEdit.exec() == QDialog.Accepted:
                 try:
@@ -412,6 +339,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def addData(self):
 
         if self.model.objectName()=='codeModel':
+            if self.addThread.isRunning():
+                self.addThread.wait()
             self.addThread.setMRS(self.codeModel, self.row, self.statusBar)
         elif self.model.objectName()=='sort_Model':
             self.model.insertRows(self.row+1, 1)
@@ -472,7 +401,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         self.query.exec('DROP TABLE %s'%(deleteTableName))
                 else:
                     if self.row!=0:
-
+                        if self.delThread.isRunning():
+                            self.delThread.wait()
                         self.delThread.setMRSF(self.codeModel, self.row, self.statusBar, self.reselect)   
 
             elif self.model == self.sort_Model:
@@ -611,12 +541,83 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
 def setTop(w, check):
     if check==1:
-        w.setWindowFlags(Qt.WindowStaysOnTopHint|Qt.Tool|Qt.FramelessWindowHint)
+        w.setWindowFlags(Qt.WindowStaysOnTopHint|Qt.Tool|Qt.Widget|Qt.FramelessWindowHint)
     elif check==0:
         w.setWindowFlags(Qt.Widget|Qt.FramelessWindowHint)
     if w.isVisible()==False:
         w.setVisible(True);
         
+
+
+class AddThread(QThread):
+    
+    
+    def __init__(self, *args, **kwargs):
+        super(AddThread, self).__init__(*args, **kwargs)
+    def run(self):
+        if self.isRunning():
+            for i in range(self.model.rowCount()-1, self.row, -1): #从最后一行开始自增1
+                index=self.model.index(i, 0)                
+                self.model.setData(index,self.model.data(index)+1)
+                QApplication.processEvents()
+            self.model.insertRows(self.row+1, 1)
+            
+            index0=self.model.index(self.row, 0)
+            index10=self.model.index(self.row+1, 0)            
+            index11=self.model.index(self.row+1, 1)
+    
+            self.model.setData(index10,self.model.data(index0)+1)
+
+            self.statusBar.showMessage(self.tr('增加了一行'), 1000)        
+            self.model.setData(index11,'')
+            self.statusBar.clearMessage()
+        self.exit()
+    def setMRS(self, model, row, statu):
+        self.model = model
+        self.row = row
+        self.statusBar = statu        
+        self.start()
+
+class DelThread(QThread):
+
+    def __init__(self, *args, **kwargs):
+        super(DelThread, self).__init__(*args, **kwargs)
+    
+    def run(self):
+        if self.isRunning():
+            
+            if self.row < self.model.rowCount():
+                self.model.removeRows(self.row, 1)#删除数据 
+                self.reselect()                        
+                time.sleep(0.08)
+                for i in range(self.row, self.model.rowCount()):#从删除行开始自减1
+                    index=self.model.index(i, 0)                
+                    self.model.setData(index,self.model.data(index)-1)
+                    QApplication.processEvents()
+
+                self.statusBar.showMessage(self.tr(u'删除了一行'), 1000)
+                self.statusBar.clearMessage()
+        self.exit()
+    def setMRSF(self, model, row, statu, selectFunc):
+        self.model = model
+        self.row = row
+        self.statusBar = statu
+        self.reselect=selectFunc        
+        self.start()
+
+#class ClsThread(QThread):
+#    def __init__(self, *args, **kwargs):
+#        super(ClsThread, self).__init__(*args, **kwargs)
+#    
+#    def run(self):
+#        print(self.dbs)
+#        self.exit()
+#        
+#    def setDR(self, dbs,  recordFunc):
+#        self.dbs = dbs
+#        self.recordList=recordFunc        
+#        self.start()
+
 if __name__ == "__main__":
     
     app = QtWidgets.QApplication(sys.argv)
@@ -650,3 +651,4 @@ if __name__ == "__main__":
 #    ui.show()
     
     sys.exit(app.exec_())
+

@@ -23,6 +23,7 @@ class AboutMe_Dialog(QMainWindow):
     def anchorClickedSlot(self, url):
         return webbrowser.open_new_tab(url.toString())	        
 
+    
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)

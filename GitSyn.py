@@ -1,18 +1,25 @@
-import os, traceback, platform, threading
+import os, traceback, platform, threading, subprocess
+import subprocess
 from subprocess import call
 
-from PyQt5.QtWidgets import QInputDialog, QDialog, QMessageBox, QWidget
-from PyQt5.QtGui import QIcon, QPixmap
-from PyQt5.QtCore import QSettings
-from git import *
 
 
-class Git_Syn(object):
+from PyQt5 import  QtGui, QtWidgets, QtCore
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+
+
+import time
+from aboutMeWidget import AboutMe_Dialog
+
+class Git_Syn(QObject):
     
     '''
     cls:静态方法必须参数,无意义.<br>
     parent:父级窗口.<br>
     '''
+
     @classmethod
     def init(cls, parent, ):
         '''
@@ -53,24 +60,21 @@ class Git_Syn(object):
 
             elif msg==QMessageBox.No:
                 remoteName=Git_Syn.R_W_setting()
-                repo=Repo('.')
-                git = repo.git
                 try:
-                    git.remote('remove', remoteName)
+                    subprocess.Popen('git remove %s'%remoteName, shell=True)
                     Git_Syn.creatGit(parent,systemTpye)
                 except:
                     Git_Syn.creatGit(parent,systemTpye)
         else:#不存在.git,创建.git
             Git_Syn.creatGit(parent, systemTpye)
-    
+
     @classmethod
-    def gitPush(cls, parent, ):
+    def gitPush(cls, parent):
         remoteName=Git_Syn.R_W_setting()
-        repo=Repo('.')
-        git = repo.git
+
         try:
-            git.add('db')
-            git.commit('-m', 'This is a db.')
+            subprocess.Popen("git add db", shell=True)
+            subprocess.Popen('git commit -m "This is a db."', shell=True)
         except:
             errmsg = traceback.format_exc()
             try:
@@ -80,17 +84,16 @@ class Git_Syn(object):
             except:
                 pass
         try:
-            push = PushThread(remoteName, git)
+            push = PushThread(remoteName)
             return push
         except Exception :
             Git_Syn.creatMsg(parent)
     @classmethod
     def gitPull(cls, parent):
         remoteName=Git_Syn.R_W_setting()        
-        repo=Repo('.')
-        git = repo.git
+
         try:
-            pull = PullThread(remoteName, git)
+            pull = PullThread(remoteName)
             return pull
         except :
             try:
@@ -101,21 +104,39 @@ class Git_Syn(object):
                 pass            
     @classmethod            
     def push_pull(cls, parent, type):
-#        remoteName = Git_Syn.R_W_setting(parent)      
-#        git = Repo('.').git        
+        cls.textedit = AboutMe_Dialog(parent);
+        
+        cls.resultEdit=QPlainTextEdit()
+        cls.textedit.verticalLayout.addWidget(cls.resultEdit)
+        
+        icon = QIcon()
+        icon.addPixmap(QPixmap(":/ima/git.ico"), QIcon.Normal, QIcon.Off)
+        cls.textedit.setWindowIcon(icon)
+        cls.textedit.setWindowTitle("等待git结果")
+        cls.textedit.setWindowModality(0)#设置为应用程序模态；0:非模态，1:非模态,2.应用程序模态
+        cls.textedit.show()
+        
         pushaction=Git_Syn.gitPush(parent)
         pullaction=Git_Syn.gitPull(parent)
+        
+        pushaction.SignalAppendText.connect(
+            Git_Syn.onTextAppend, type=Qt.QueuedConnection)
+        pullaction.SignalAppendText.connect(
+            Git_Syn.onTextAppend, type=Qt.QueuedConnection)
         if type==7:#上传
-            if not pullaction.isAlive():#not runing:
+            if not pullaction.isRunning():#not runing:
                 pushaction.start()
             else:
                 QMessageBox.information(parent, '注意！', '正在下载，请稍后重试。')
         elif type==8:#下载
-            if not pushaction.isAlive(): #not runing:
+            if not pushaction.isRunning(): #not runing:
                 pullaction.start()
             else:
-                QMessageBox.information(parent, '注意！', '正在上传，请稍后重试。')    
+                QMessageBox.information(parent, '注意！', '正在上传，请稍后重试。')     
     
+    def onTextAppend(text):
+        print(text)
+        Git_Syn.resultEdit.appendPlainText(text)
     
     def creatGit(parent,systemTpye):
         '''
@@ -148,11 +169,10 @@ class Git_Syn(object):
                 except:
                     QMessageBox.critical(parent, '错误', '请确认电脑已经安装了Git软件')
                     return
-            repo=Repo('.')
-            git = repo.git
+
             try:
-                git.add('db')
-                git.commit('-m', 'This is a db.')
+                os.popen("git add db")
+                os.popen('git commit -m "This is a db."')
             except:
                 Git_Syn.creatMsg(parent)
         
@@ -162,7 +182,7 @@ class Git_Syn(object):
             if gitDialog.exec()==QDialog.Accepted:
                 
                 remoteName=gitDialog.textValue() #远程仓库在本地名
-                git.remote('add',remoteName,remoURLpath)
+                os.popen("git remote add %s %s"%(remoteName,remoURLpath))
                 Git_Syn.R_W_setting(remote=remoteName, path=remoURLpath)
                 
             else:
@@ -203,26 +223,46 @@ class Git_Syn(object):
         gitMsg.setStandardButtons(QMessageBox.Ok)
         gitMsg.exec_()	
 
-class PushThread(threading.Thread):
-    def __init__(self, remoteName, git):
+class PushThread(QThread):
+    SignalAppendText = pyqtSignal(str)
+    def __init__(self, remoteName):
         super(PushThread, self).__init__()
         self.remoteName=remoteName
-        self.git=git
-    def run(self):
-        self.git.push('-u', self.remoteName, 'master')
-        
-class PullThread(threading.Thread):
-    def __init__(self, remoteName, git):
-        super(PullThread, self).__init__()
-        self.remoteName=remoteName
-        self.git=git
+
     def run(self):
         try:
-            self.git.pull('--rebase', self.remoteName, 'master')
+            result = subprocess.Popen('git push -v --progress "%s" master:master'%self.remoteName, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        
+
+            print("end2")            
+            stdout = str(result.stdout.read(), encoding="gb2312")
+            print(stdout, type(stdout))
+            stderr = str(result.stderr.read(), encoding="gb2312")
+            print(stderr, type(stderr))            
+            print("end1")              
+            self.SignalAppendText.emit(stdout+"\n"+"="*35+"\n")
+            self.SignalAppendText.emit(stderr+"\n"+"-"*35+"\n")
+
+#            if "* branch            master     -> FETCH_HEAD" in 
+            print("end")
+        except:
+            print('error')
+class PullThread(QThread):
+    SignalAppendText = pyqtSignal(str)
+    def __init__(self, remoteName):
+        super(PullThread, self).__init__()
+        self.remoteName=remoteName
+
+    def run(self):
+        try:
+            result = subprocess.Popen("git pull --rebase %s master"%self.remoteName, shell=True)
+            res = result.read()  
+            for line in res.splitlines():  
+                print(line)
+                self.SignalAppendText.emit(line)
         except:
             errmsg = traceback.format_exc()
             if 'find remote ref master' in errmsg:
                 pass
             else:
-                QMessageBox(QWidget(),'错误!', errmsg)
-
+                QMessageBox.critical(QWidget(),'错误!', errmsg)

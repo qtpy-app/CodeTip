@@ -34,10 +34,12 @@ class FramelessWindow(QWidget, Ui_FramelessWindow):
         self.tray = QSystemTrayIcon(self) #创建系统托盘对象  
         self.tray.setIcon(self.icon)  #设置系统托盘图标
         
+        self.MaxAction = QAction(u'最大化 ', self, triggered=lambda:self.setWindowState(Qt.WindowMaximized)) #添加一级菜单动作选项(最大化主窗口)  
         self.RestoreAction = QAction(u'还原 ', self, triggered=self.show) #添加一级菜单动作选项(还原主窗口)  
         self.QuitAction = QAction(u'退出 ', self, triggered=self.close) #添加一级菜单动作选项(退出程序)  
 
         self.tray_menu = QMenu(QApplication.desktop()) #创建菜单  
+        self.tray_menu.addAction(self.MaxAction) #为菜单添加动作  
         self.tray_menu.addAction(self.RestoreAction) #为菜单添加动作  
         self.tray_menu.addAction(self.QuitAction)  
         
@@ -270,7 +272,10 @@ class FramelessWindow(QWidget, Ui_FramelessWindow):
 
         self.close()  
 #        qApp.quit()
-        sip.delete(self.tray)
+        try:
+            sip.delete(self.tray)
+        except:
+            pass
     def setContent(self, w):
         self.contentLayout.setContentsMargins(0, 0, 0, 0)
         self.contentLayout.setSpacing(0)
@@ -317,7 +322,7 @@ class FramelessWindow(QWidget, Ui_FramelessWindow):
             self.setTop(check)
     def setTop(w, check):
         if check==1:
-            w.setWindowFlags(Qt.WindowStaysOnTopHint|Qt.Tool|Qt.FramelessWindowHint)
+            w.setWindowFlags(Qt.WindowStaysOnTopHint|Qt.Tool|Qt.Widget|Qt.FramelessWindowHint)
 #            w.setWindowFlags(Qt.WindowStaysOnTopHint|Qt.FramelessWindowHint)
         elif check==0:
             w.setWindowFlags(Qt.Widget|Qt.Tool|Qt.FramelessWindowHint)
